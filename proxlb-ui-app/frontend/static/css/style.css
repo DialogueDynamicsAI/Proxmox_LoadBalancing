@@ -1346,6 +1346,7 @@ body {
 
 .form-group select,
 .form-group input[type="text"],
+.form-group input[type="email"],
 .form-group input[type="number"] {
     padding: 0.75rem 1rem;
     background: var(--bg-tertiary);
@@ -3773,4 +3774,68 @@ tr.running td {
     border-radius: 6px;
     font-family: 'JetBrains Mono', monospace;
     color: #10b981;
+}
+
+/* Comprehensive Form Input Styling */
+.form-input,
+input.form-input,
+input[type="text"].form-input,
+input[type="email"].form-input,
+input[type="password"].form-input,
+input[type="number"].form-input,
+input[type="tel"].form-input,
+input[type="url"].form-input,
+select.form-input,
+textarea.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(30, 41, 59, 0.8) !important;
+    border: 1px solid rgba(71, 85, 105, 0.5) !important;
+    border-radius: 8px;
+    color: #f1f5f9 !important;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+input.form-input:focus,
+select.form-input:focus,
+textarea.form-input:focus {
+    outline: none;
+    border-color: #06b6d4 !important;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+.form-input::placeholder {
+    color: #64748b;
+}
+
+.form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Form Label Styling */
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Select Dropdown Styling */
+select.form-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+select.form-input option {
+    background: #1e293b;
+    color: #f1f5f9;
 }
