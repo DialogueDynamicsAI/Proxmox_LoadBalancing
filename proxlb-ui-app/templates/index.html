@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProxLB - Load Balancer Dashboard</title>
+    <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,10 +15,39 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-icon">⚖️</span>
-                    <span class="logo-text">ProxLB</span>
+                    <div class="logo-icon-container">
+                        <svg class="logo-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="4" y="8" width="40" height="8" rx="2" fill="url(#grad1)"/>
+                            <rect x="4" y="20" width="40" height="8" rx="2" fill="url(#grad2)"/>
+                            <rect x="4" y="32" width="40" height="8" rx="2" fill="url(#grad3)"/>
+                            <circle cx="38" cy="12" r="3" fill="#10b981"/>
+                            <circle cx="38" cy="24" r="3" fill="#10b981"/>
+                            <circle cx="38" cy="36" r="3" fill="#f59e0b"/>
+                            <defs>
+                                <linearGradient id="grad1" x1="4" y1="12" x2="44" y2="12">
+                                    <stop offset="0%" stop-color="#3b82f6"/>
+                                    <stop offset="100%" stop-color="#8b5cf6"/>
+                                </linearGradient>
+                                <linearGradient id="grad2" x1="4" y1="24" x2="44" y2="24">
+                                    <stop offset="0%" stop-color="#8b5cf6"/>
+                                    <stop offset="100%" stop-color="#ec4899"/>
+                                </linearGradient>
+                                <linearGradient id="grad3" x1="4" y1="36" x2="44" y2="36">
+                                    <stop offset="0%" stop-color="#ec4899"/>
+                                    <stop offset="100%" stop-color="#f59e0b"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="logo-text-container">
+                        <span class="logo-text-main">Proxmox</span>
+                        <span class="logo-text-accent">LoadBalancer</span>
+                    </div>
                 </div>
-                <span class="version">v1.1.10</span>
+                <div class="brand-footer">
+                    <span class="powered-by">powered by</span>
+                    <span class="brand-name">Dialogue<em>Dynamics</em></span>
+                </div>
             </div>
             
             <nav class="nav-menu">
@@ -65,7 +94,7 @@
             <!-- Dashboard Page -->
             <section class="page active" id="page-dashboard">
                 <header class="page-header">
-                    <h1>Cluster Dashboard</h1>
+                    <h1>Cluster <em>Dashboard</em></h1>
                     <div class="header-actions">
                         <button class="btn btn-primary" onclick="triggerRebalance()">
                             <span>⚡</span> Rebalance Now
@@ -432,13 +461,250 @@
                     </div>
                 </header>
 
-                <div class="config-container">
+                <div class="config-grid">
+                    <!-- Proxmox API Settings -->
                     <div class="card">
                         <div class="card-header">
-                            <h3>ProxLB Configuration (proxlb.yaml)</h3>
+                            <h3>🔌 Proxmox API Connection</h3>
                         </div>
                         <div class="card-body">
-                            <textarea class="config-editor" id="config-editor" spellcheck="false">Loading configuration...</textarea>
+                            <form class="settings-form" id="api-config-form">
+                                <div class="form-group">
+                                    <label for="cfg-hosts">API Hosts (comma separated)</label>
+                                    <input type="text" id="cfg-hosts" placeholder="10.80.11.11, 10.80.11.12, 10.80.11.13">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-user">Username</label>
+                                    <input type="text" id="cfg-user" placeholder="proxlb@pve">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-pass">Password</label>
+                                    <input type="password" id="cfg-pass" placeholder="********">
+                                    <small class="form-hint">Leave blank to keep current password</small>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="cfg-timeout">Timeout (seconds)</label>
+                                        <input type="number" id="cfg-timeout" min="1" max="60" value="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>SSL Verification</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-ssl">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Cluster Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🖥️ Cluster Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <form class="settings-form" id="cluster-config-form">
+                                <div class="form-group">
+                                    <label for="cfg-maintenance-nodes">Maintenance Nodes (comma separated)</label>
+                                    <input type="text" id="cfg-maintenance-nodes" placeholder="node1, node2">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-ignore-nodes">Ignored Nodes (comma separated)</label>
+                                    <input type="text" id="cfg-ignore-nodes" placeholder="node3">
+                                </div>
+                                <div class="form-group">
+                                    <label>Overprovisioning</label>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="cfg-overprovisioning" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <small class="form-hint">Allow resource overcommitment</small>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Balancing Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>⚖️ Balancing Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <form class="settings-form" id="balancing-config-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Enable Balancing</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-balance-enable" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Live Migration</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-live" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="cfg-method">Balancing Method</label>
+                                        <select id="cfg-method">
+                                            <option value="memory">Memory</option>
+                                            <option value="cpu">CPU</option>
+                                            <option value="disk">Disk</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-mode">Balancing Mode</label>
+                                        <select id="cfg-mode">
+                                            <option value="used">Used Resources</option>
+                                            <option value="assigned">Assigned Resources</option>
+                                            <option value="psi">PSI (Pressure)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-balanciness">Balanciness Threshold (%)</label>
+                                    <div class="range-group">
+                                        <input type="range" id="cfg-balanciness" min="1" max="50" value="5">
+                                        <span class="range-value" id="cfg-balanciness-value">5%</span>
+                                    </div>
+                                    <small class="form-hint">Minimum difference required to trigger migration</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-memory-threshold">Memory Threshold (%)</label>
+                                    <div class="range-group">
+                                        <input type="range" id="cfg-memory-threshold" min="50" max="100" value="75">
+                                        <span class="range-value" id="cfg-memory-threshold-value">75%</span>
+                                    </div>
+                                    <small class="form-hint">Threshold before rebalancing is triggered</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-balance-types">Balance Types</label>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="cfg-balance-vm" checked> VMs
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="cfg-balance-ct" checked> Containers
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Enforce Affinity</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-enforce-affinity">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>With Local Disks</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-local-disks" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>With Conntrack State</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-conntrack" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Balance Larger Guests First</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-larger-first">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Parallel Migrations</label>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="cfg-parallel">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-parallel-jobs">Parallel Jobs</label>
+                                        <input type="number" id="cfg-parallel-jobs" min="1" max="10" value="1">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-max-validation">Max Job Validation (seconds)</label>
+                                    <input type="number" id="cfg-max-validation" min="60" max="7200" value="1800">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Service Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔄 Service Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <form class="settings-form" id="service-config-form">
+                                <div class="form-group">
+                                    <label>Daemon Mode</label>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="cfg-daemon" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <small class="form-hint">Run as background service</small>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="cfg-schedule-interval">Schedule Interval</label>
+                                        <input type="number" id="cfg-schedule-interval" min="1" max="24" value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-schedule-format">Interval Format</label>
+                                        <select id="cfg-schedule-format">
+                                            <option value="hours">Hours</option>
+                                            <option value="minutes">Minutes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay Before Start</label>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="cfg-delay-enable">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-row" id="delay-settings" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="cfg-delay-time">Delay Time</label>
+                                        <input type="number" id="cfg-delay-time" min="1" max="60" value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-delay-format">Delay Format</label>
+                                        <select id="cfg-delay-format">
+                                            <option value="hours">Hours</option>
+                                            <option value="minutes">Minutes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-log-level">Log Level</label>
+                                    <select id="cfg-log-level">
+                                        <option value="DEBUG">DEBUG</option>
+                                        <option value="INFO" selected>INFO</option>
+                                        <option value="WARNING">WARNING</option>
+                                        <option value="ERROR">ERROR</option>
+                                    </select>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

@@ -754,18 +754,187 @@ function refreshLogs() {
 
 // ============== Config Page ==============
 
+let currentConfig = null;
+
 async function loadConfig() {
     try {
         const data = await apiGet('/config');
-        const editor = document.getElementById('config-editor');
+        currentConfig = data.config;
         
-        if (editor && data.config) {
-            // Convert to YAML-like format for display
-            editor.value = jsyaml_dump(data.config);
+        if (!currentConfig) {
+            showToast('No configuration found', 'error');
+            return;
         }
+        
+        // Populate API settings
+        const api = currentConfig.proxmox_api || {};
+        document.getElementById('cfg-hosts').value = (api.hosts || []).join(', ');
+        document.getElementById('cfg-user').value = api.user || '';
+        document.getElementById('cfg-pass').value = '';  // Don't show password
+        document.getElementById('cfg-timeout').value = api.timeout || 10;
+        document.getElementById('cfg-ssl').checked = api.ssl_verification !== false;
+        
+        // Populate Cluster settings
+        const cluster = currentConfig.proxmox_cluster || {};
+        document.getElementById('cfg-maintenance-nodes').value = (cluster.maintenance_nodes || []).join(', ');
+        document.getElementById('cfg-ignore-nodes').value = (cluster.ignore_nodes || []).join(', ');
+        document.getElementById('cfg-overprovisioning').checked = cluster.overprovisioning !== false;
+        
+        // Populate Balancing settings
+        const balancing = currentConfig.balancing || {};
+        document.getElementById('cfg-balance-enable').checked = balancing.enable !== false;
+        document.getElementById('cfg-live').checked = balancing.live !== false;
+        document.getElementById('cfg-method').value = balancing.method || 'memory';
+        document.getElementById('cfg-mode').value = balancing.mode || 'used';
+        
+        const balanciness = balancing.balanciness || 5;
+        document.getElementById('cfg-balanciness').value = balanciness;
+        document.getElementById('cfg-balanciness-value').textContent = `${balanciness}%`;
+        
+        const memThreshold = balancing.memory_threshold || 75;
+        document.getElementById('cfg-memory-threshold').value = memThreshold;
+        document.getElementById('cfg-memory-threshold-value').textContent = `${memThreshold}%`;
+        
+        // Balance types
+        const balanceTypes = balancing.balance_types || ['vm', 'ct'];
+        document.getElementById('cfg-balance-vm').checked = balanceTypes.includes('vm');
+        document.getElementById('cfg-balance-ct').checked = balanceTypes.includes('ct');
+        
+        document.getElementById('cfg-enforce-affinity').checked = balancing.enforce_affinity === true;
+        document.getElementById('cfg-local-disks').checked = balancing.with_local_disks !== false;
+        document.getElementById('cfg-conntrack').checked = balancing.with_conntrack_state !== false;
+        document.getElementById('cfg-larger-first').checked = balancing.balance_larger_guests_first === true;
+        document.getElementById('cfg-parallel').checked = balancing.parallel === true;
+        document.getElementById('cfg-parallel-jobs').value = balancing.parallel_jobs || 1;
+        document.getElementById('cfg-max-validation').value = balancing.max_job_validation || 1800;
+        
+        // Populate Service settings
+        const service = currentConfig.service || {};
+        document.getElementById('cfg-daemon').checked = service.daemon !== false;
+        
+        const schedule = service.schedule || {};
+        document.getElementById('cfg-schedule-interval').value = schedule.interval || 1;
+        document.getElementById('cfg-schedule-format').value = schedule.format || 'hours';
+        
+        const delay = service.delay || {};
+        document.getElementById('cfg-delay-enable').checked = delay.enable === true;
+        document.getElementById('cfg-delay-time').value = delay.time || 1;
+        document.getElementById('cfg-delay-format').value = delay.format || 'hours';
+        
+        // Show/hide delay settings
+        toggleDelaySettings();
+        
+        document.getElementById('cfg-log-level').value = service.log_level || 'INFO';
+        
+        // Initialize range input listeners
+        initConfigFormListeners();
+        
     } catch (error) {
-        document.getElementById('config-editor').value = 'Failed to load configuration';
+        showToast('Failed to load configuration', 'error');
+        console.error('Config load error:', error);
     }
+}
+
+function initConfigFormListeners() {
+    // Balanciness slider
+    const balancinessSlider = document.getElementById('cfg-balanciness');
+    if (balancinessSlider) {
+        balancinessSlider.addEventListener('input', (e) => {
+            document.getElementById('cfg-balanciness-value').textContent = `${e.target.value}%`;
+        });
+    }
+    
+    // Memory threshold slider
+    const memThresholdSlider = document.getElementById('cfg-memory-threshold');
+    if (memThresholdSlider) {
+        memThresholdSlider.addEventListener('input', (e) => {
+            document.getElementById('cfg-memory-threshold-value').textContent = `${e.target.value}%`;
+        });
+    }
+    
+    // Delay toggle
+    const delayEnable = document.getElementById('cfg-delay-enable');
+    if (delayEnable) {
+        delayEnable.addEventListener('change', toggleDelaySettings);
+    }
+}
+
+function toggleDelaySettings() {
+    const delayEnabled = document.getElementById('cfg-delay-enable').checked;
+    const delaySettings = document.getElementById('delay-settings');
+    if (delaySettings) {
+        delaySettings.style.display = delayEnabled ? 'grid' : 'none';
+    }
+}
+
+function buildConfigFromForm() {
+    // Parse hosts
+    const hostsStr = document.getElementById('cfg-hosts').value;
+    const hosts = hostsStr.split(',').map(h => h.trim()).filter(h => h);
+    
+    // Parse maintenance nodes
+    const maintNodesStr = document.getElementById('cfg-maintenance-nodes').value;
+    const maintenanceNodes = maintNodesStr.split(',').map(n => n.trim()).filter(n => n);
+    
+    // Parse ignore nodes
+    const ignoreNodesStr = document.getElementById('cfg-ignore-nodes').value;
+    const ignoreNodes = ignoreNodesStr.split(',').map(n => n.trim()).filter(n => n);
+    
+    // Build balance types array
+    const balanceTypes = [];
+    if (document.getElementById('cfg-balance-vm').checked) balanceTypes.push('vm');
+    if (document.getElementById('cfg-balance-ct').checked) balanceTypes.push('ct');
+    
+    const config = {
+        proxmox_api: {
+            hosts: hosts,
+            user: document.getElementById('cfg-user').value,
+            pass: document.getElementById('cfg-pass').value || (currentConfig?.proxmox_api?.pass || ''),
+            ssl_verification: document.getElementById('cfg-ssl').checked,
+            timeout: parseInt(document.getElementById('cfg-timeout').value) || 10
+        },
+        proxmox_cluster: {
+            maintenance_nodes: maintenanceNodes,
+            ignore_nodes: ignoreNodes,
+            overprovisioning: document.getElementById('cfg-overprovisioning').checked
+        },
+        balancing: {
+            enable: document.getElementById('cfg-balance-enable').checked,
+            enforce_affinity: document.getElementById('cfg-enforce-affinity').checked,
+            parallel: document.getElementById('cfg-parallel').checked,
+            parallel_jobs: parseInt(document.getElementById('cfg-parallel-jobs').value) || 1,
+            live: document.getElementById('cfg-live').checked,
+            with_local_disks: document.getElementById('cfg-local-disks').checked,
+            with_conntrack_state: document.getElementById('cfg-conntrack').checked,
+            balance_types: balanceTypes,
+            max_job_validation: parseInt(document.getElementById('cfg-max-validation').value) || 1800,
+            memory_threshold: parseInt(document.getElementById('cfg-memory-threshold').value) || 75,
+            balanciness: parseInt(document.getElementById('cfg-balanciness').value) || 5,
+            method: document.getElementById('cfg-method').value,
+            mode: document.getElementById('cfg-mode').value,
+            balance_larger_guests_first: document.getElementById('cfg-larger-first').checked
+        },
+        service: {
+            daemon: document.getElementById('cfg-daemon').checked,
+            schedule: {
+                interval: parseInt(document.getElementById('cfg-schedule-interval').value) || 1,
+                format: document.getElementById('cfg-schedule-format').value
+            },
+            delay: {
+                enable: document.getElementById('cfg-delay-enable').checked,
+                time: parseInt(document.getElementById('cfg-delay-time').value) || 1,
+                format: document.getElementById('cfg-delay-format').value
+            },
+            log_level: document.getElementById('cfg-log-level').value
+        }
+    };
+    
+    // If password field is empty, keep existing password
+    if (!document.getElementById('cfg-pass').value && currentConfig?.proxmox_api?.pass) {
+        config.proxmox_api.pass = currentConfig.proxmox_api.pass;
+    }
+    
+    return config;
 }
 
 async function saveConfig() {
@@ -774,13 +943,13 @@ async function saveConfig() {
         'Save configuration and restart ProxLB service?',
         async () => {
             try {
-                const editor = document.getElementById('config-editor');
-                const config = jsyaml_parse(editor.value);
+                const config = buildConfigFromForm();
                 
                 await apiPost('/config', { config });
                 await apiPost('/service/restart');
                 
                 showToast('Configuration saved and service restarted', 'success');
+                currentConfig = config;  // Update cached config
             } catch (error) {
                 showToast('Failed to save configuration: ' + error.message, 'error');
             }
