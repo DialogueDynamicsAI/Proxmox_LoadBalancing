@@ -2372,3 +2372,132 @@ tr.running td {
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* Raw Output Header with Download */
+.raw-output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.output-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.raw-output-header .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.raw-output-details[open] .raw-output {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Improved Dry Run Summary Styles */
+.dry-run-summary {
+    background: linear-gradient(135deg, rgba(0, 188, 140, 0.1) 0%, rgba(0, 188, 140, 0.05) 100%);
+    border: 1px solid rgba(0, 188, 140, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 1.5rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    min-width: 100px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    font-family: var(--font-mono);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.balanced-message {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.15) 0%, rgba(46, 204, 113, 0.05) 100%);
+    border: 2px solid var(--accent-success);
+    border-radius: 12px;
+    margin: 1.5rem 0;
+}
+
+.balanced-icon {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+    filter: drop-shadow(0 2px 4px rgba(46, 204, 113, 0.3));
+}
+
+.balanced-text {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent-success);
+    margin-bottom: 0.5rem;
+}
+
+.balanced-subtext {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Migration table improvements */
+.migration-table {
+    border: 2px solid var(--accent-warning);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.migration-header {
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.2) 0%, rgba(241, 196, 15, 0.1) 100%);
+}
+
+.migration-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.node-to::before {
+    content: "→ ";
+    color: var(--accent-success);
+    font-weight: bold;
+}

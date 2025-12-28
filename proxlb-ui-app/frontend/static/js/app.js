@@ -1015,10 +1015,28 @@ async function triggerDryRun() {
             
             // Try to parse JSON from output (ProxLB returns JSON with -j flag)
             const fullOutput = output.join('\n');
-            const jsonMatch = fullOutput.match(/\{[\s\S]*"guests"[\s\S]*\}/);
-            if (jsonMatch) {
+            
+            // Find the main JSON object - look for opening brace and find matching close
+            let jsonStart = fullOutput.indexOf('{"nodes"');
+            if (jsonStart === -1) jsonStart = fullOutput.indexOf('{\n"nodes"');
+            if (jsonStart === -1) jsonStart = fullOutput.indexOf('{');
+            
+            if (jsonStart !== -1) {
+                // Find matching closing brace
+                let braceCount = 0;
+                let jsonEnd = jsonStart;
+                for (let i = jsonStart; i < fullOutput.length; i++) {
+                    if (fullOutput[i] === '{') braceCount++;
+                    if (fullOutput[i] === '}') braceCount--;
+                    if (braceCount === 0) {
+                        jsonEnd = i + 1;
+                        break;
+                    }
+                }
+                
                 try {
-                    const data = JSON.parse(jsonMatch[0]);
+                    const jsonStr = fullOutput.substring(jsonStart, jsonEnd);
+                    const data = JSON.parse(jsonStr);
                     guests = data.guests || {};
                     nodes = data.nodes || {};
                     
@@ -1074,17 +1092,22 @@ async function triggerDryRun() {
                 content += '</div>';
             }
             
-            // Collapsible raw output
+            // Collapsible raw output with download option
             content += '<details class="raw-output-details">';
             content += '<summary>📋 Show Raw Output</summary>';
-            content += '<div class="raw-output">';
-            output.slice(0, 20).forEach(line => {
+            content += '<div class="raw-output-header">';
+            content += `<span class="output-count">${output.length} lines</span>`;
+            content += `<button class="btn btn-sm btn-secondary" onclick="downloadDryRunCSV()">⬇️ Download CSV</button>`;
+            content += '</div>';
+            content += '<div class="raw-output" id="dry-run-raw-output">';
+            output.forEach(line => {
                 content += `<div class="log-line">${escapeHtml(line)}</div>`;
             });
-            if (output.length > 20) {
-                content += `<div class="log-line muted">... and ${output.length - 20} more lines</div>`;
-            }
             content += '</div></details>';
+            
+            // Store output for CSV download
+            window.lastDryRunOutput = output;
+            window.lastDryRunGuests = guests;
             
             updateResultsModal('success', 'Dry run completed', content);
         } else {
@@ -1153,6 +1176,57 @@ function updateResultsModal(status, message, content) {
 function closeResultsModal() {
     const modal = document.getElementById('results-modal');
     if (modal) modal.style.display = 'none';
+}
+
+function downloadDryRunCSV() {
+    // Check if we have guest data to export
+    const guests = window.lastDryRunGuests || {};
+    const rawOutput = window.lastDryRunOutput || [];
+    
+    if (Object.keys(guests).length > 0) {
+        // Export guest data as structured CSV
+        const headers = ['Name', 'Type', 'Status', 'Node Current', 'Node Target', 'CPU Total', 'CPU Used %', 'Memory Total (GB)', 'Memory Used (GB)', 'Migration Needed'];
+        const rows = [headers.join(',')];
+        
+        for (const [name, guest] of Object.entries(guests)) {
+            const migrationNeeded = guest.node_current !== guest.node_target ? 'Yes' : 'No';
+            const memTotalGB = guest.memory_total ? (guest.memory_total / 1073741824).toFixed(2) : '0';
+            const memUsedGB = guest.memory_used ? (guest.memory_used / 1073741824).toFixed(2) : '0';
+            const cpuUsedPercent = guest.cpu_used ? (guest.cpu_used * 100).toFixed(2) : '0';
+            
+            const row = [
+                `"${name}"`,
+                guest.type || 'vm',
+                guest.status || 'unknown',
+                guest.node_current || 'N/A',
+                guest.node_target || 'N/A',
+                guest.cpu_total || 0,
+                cpuUsedPercent,
+                memTotalGB,
+                memUsedGB,
+                migrationNeeded
+            ];
+            rows.push(row.join(','));
+        }
+        
+        downloadFile(rows.join('\n'), 'proxlb-dry-run-guests.csv', 'text/csv');
+    } else {
+        // Fall back to raw output as text
+        downloadFile(rawOutput.join('\n'), 'proxlb-dry-run-output.txt', 'text/plain');
+    }
+}
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${filename}`, 'success');
 }
 
 function escapeHtml(text) {
