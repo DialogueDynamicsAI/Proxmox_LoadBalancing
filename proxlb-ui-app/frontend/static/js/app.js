@@ -2897,3 +2897,111 @@ async function sendTestEmail() {
         };
     }
 })();
+
+// ============== Email Logs Functions ==============
+
+async function loadEmailLogs() {
+    try {
+        const statusFilter = document.getElementById('email-log-status-filter')?.value || '';
+        const typeFilter = document.getElementById('email-log-type-filter')?.value || '';
+        
+        let url = '/api/smtp/logs?limit=50';
+        if (statusFilter) url += `&status=${statusFilter}`;
+        if (typeFilter) url += `&email_type=${typeFilter}`;
+        
+        const response = await fetch(url, { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        renderEmailLogs(data.logs);
+        
+        // Also load stats
+        loadEmailStats();
+    } catch (error) {
+        console.error('Failed to load email logs:', error);
+    }
+}
+
+async function loadEmailStats() {
+    try {
+        const response = await fetch('/api/smtp/stats', { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        
+        const stats = await response.json();
+        
+        document.getElementById('email-stat-total').textContent = stats.total || 0;
+        document.getElementById('email-stat-success').textContent = stats.success || 0;
+        document.getElementById('email-stat-failed').textContent = stats.failed || 0;
+    } catch (error) {
+        console.error('Failed to load email stats:', error);
+    }
+}
+
+function renderEmailLogs(logs) {
+    const tbody = document.getElementById('email-logs-body');
+    if (!tbody) return;
+    
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No email logs yet</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => {
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const statusClass = log.status === 'success' ? 'status-success' : 'status-failed';
+        const statusIcon = log.status === 'success' ? '✅' : '❌';
+        const typeLabel = log.type || 'general';
+        
+        return `
+            <tr>
+                <td class="timestamp">${timestamp}</td>
+                <td class="email-to">${escapeHtml(log.to_email)}</td>
+                <td class="email-subject">${escapeHtml(log.subject)}</td>
+                <td><span class="badge badge-${typeLabel}">${typeLabel}</span></td>
+                <td><span class="status-badge ${statusClass}">${statusIcon} ${log.status}</span></td>
+                <td class="log-message">${escapeHtml(log.message || '-')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function refreshEmailLogs() {
+    showToast('Refreshing email logs...', 'info');
+    await loadEmailLogs();
+    showToast('Email logs refreshed', 'success');
+}
+
+async function clearEmailLogs() {
+    try {
+        const response = await fetch('/api/smtp/logs', {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to clear logs');
+        }
+        
+        showToast('Email logs cleared', 'success');
+        await loadEmailLogs();
+    } catch (error) {
+        showToast('Failed to clear logs: ' + error.message, 'error');
+    }
+}
+
+// Update loadSettings to also load email logs
+const originalLoadSettings = window.loadSettings;
+window.loadSettings = async function() {
+    if (originalLoadSettings) {
+        await originalLoadSettings();
+    }
+    await loadEmailLogs();
+};

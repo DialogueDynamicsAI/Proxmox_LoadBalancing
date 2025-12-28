@@ -362,6 +362,7 @@ async def send_test_email(
     result = send_email(
         to_email=request.to_email,
         subject="Proxmox LoadBalancer - Test Email",
+        email_type="test",
         body_html="""
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #06b6d4;">Proxmox LoadBalancer</h2>
@@ -409,6 +410,7 @@ async def forgot_password(
         send_email(
             to_email=user.email,
             subject="Proxmox LoadBalancer - Password Reset",
+            email_type="password_reset",
             body_html=f"""
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #06b6d4;">Password Reset Request</h2>
@@ -587,3 +589,38 @@ async def update_profile(
     db.refresh(user)
     
     return {"message": "Profile updated", "user": user.to_dict()}
+
+
+# ============== Email Log Routes (Admin Only) ==============
+
+@smtp_router.get("/logs")
+async def get_email_logs_endpoint(
+    limit: int = 50,
+    status: str = None,
+    email_type: str = None,
+    user: User = Depends(require_role(["admin"]))
+):
+    """Get email send logs"""
+    from auth.email_service import get_email_logs
+    logs = get_email_logs(limit=limit, status_filter=status, type_filter=email_type)
+    return {"logs": logs, "count": len(logs)}
+
+
+@smtp_router.get("/stats")
+async def get_email_stats_endpoint(user: User = Depends(require_role(["admin"]))):
+    """Get email statistics"""
+    from auth.email_service import get_email_stats
+    return get_email_stats()
+
+
+@smtp_router.delete("/logs")
+async def clear_email_logs(user: User = Depends(require_role(["admin"]))):
+    """Clear all email logs"""
+    import os
+    try:
+        log_path = "/data/email_logs.json"
+        if os.path.exists(log_path):
+            os.remove(log_path)
+        return {"success": True, "message": "Email logs cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

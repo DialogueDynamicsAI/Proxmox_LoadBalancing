@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=21">
+    <link rel="stylesheet" href="/static/css/style.css?v=22">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -973,6 +973,74 @@
                             </div>
                         </form>
                     </div>
+                    
+                    <!-- Email Logs Section -->
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-header-row">
+                            <h3>📋 Email Send Logs</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-sm btn-secondary" onclick="refreshEmailLogs()">
+                                    🔄 Refresh
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="clearEmailLogs()">
+                                    🗑️ Clear Logs
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Stats -->
+                        <div class="email-stats" id="email-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Sent:</span>
+                                <span class="stat-value" id="email-stat-total">0</span>
+                            </div>
+                            <div class="stat-item success">
+                                <span class="stat-label">Success:</span>
+                                <span class="stat-value" id="email-stat-success">0</span>
+                            </div>
+                            <div class="stat-item failed">
+                                <span class="stat-label">Failed:</span>
+                                <span class="stat-value" id="email-stat-failed">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Logs Filter -->
+                        <div class="logs-filter">
+                            <select id="email-log-status-filter" onchange="refreshEmailLogs()">
+                                <option value="">All Status</option>
+                                <option value="success">Success</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                            <select id="email-log-type-filter" onchange="refreshEmailLogs()">
+                                <option value="">All Types</option>
+                                <option value="test">Test</option>
+                                <option value="password_reset">Password Reset</option>
+                                <option value="2fa">2FA</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Logs Table -->
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>To</th>
+                                        <th>Subject</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="email-logs-body">
+                                    <tr>
+                                        <td colspan="6" class="empty-state">No email logs yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Security Settings Tab -->
@@ -1053,8 +1121,8 @@
         </div>
     </div>
 
-    <script src="/static/js/auth.js?v=21"></script>
-    <script src="/static/js/app.js?v=21"></script>
+    <script src="/static/js/auth.js?v=22"></script>
+    <script src="/static/js/app.js?v=22"></script>
 </body>
 </html>
 
