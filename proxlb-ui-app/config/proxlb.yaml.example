@@ -1,0 +1,55 @@
+# ProxLB Configuration Example
+# Copy this file to /etc/proxlb/proxlb.yaml and edit with your settings
+
+proxmox_api:
+  hosts:
+    - "10.0.0.1"      # First Proxmox node IP
+    - "10.0.0.2"      # Second Proxmox node IP (optional)
+    - "10.0.0.3"      # Third Proxmox node IP (optional)
+  user: "proxlb@pve"  # API username (must include realm, e.g., @pve)
+  pass: "your-password-here"
+  ssl: true           # Use HTTPS
+  verify: false       # Set to true if using valid SSL certificates
+
+proxmox_cluster:
+  ignore_nodes: []           # Nodes to completely ignore
+  maintenance_nodes: []      # Nodes in maintenance mode (no new VMs)
+
+service:
+  daemon: true               # Run as daemon (automatic rebalancing)
+  schedule:
+    interval: 1              # Rebalance interval
+    format: hours            # hours, minutes, or seconds
+  log_level: INFO            # DEBUG, INFO, WARNING, ERROR
+
+balancing:
+  enable: true               # Enable automatic balancing
+  method: memory             # memory, cpu, or disk
+  mode: used                 # used, assigned, or psi
+  balanciness: 5             # Threshold percentage for migration (lower = more migrations)
+  memory_threshold: 75       # Migrate when node exceeds this memory %
+
+migration:
+  type: live                 # live or offline
+  wait: 120                  # Seconds to wait for migration to complete
+  pool_enabled: false        # Enable resource pool balancing
+
+# Optional: Affinity rules (keep VMs together)
+# affinity:
+#   group1:
+#     - vm:100
+#     - vm:101
+
+# Optional: Anti-affinity rules (keep VMs apart)
+# anti_affinity:
+#   group1:
+#     - vm:200
+#     - vm:201
+
+# Optional: Ignore specific VMs
+# ignore_vms:
+#   - vm:999
+
+# Optional: Pin VMs to specific nodes
+# vm_pinning:
+#   vm:100: node1
