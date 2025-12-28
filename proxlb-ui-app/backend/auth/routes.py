@@ -513,6 +513,7 @@ async def enable_2fa(
     backup_codes = generate_backup_codes()
     
     user.totp_enabled = True
+    user.require_2fa_setup = False  # Clear the requirement flag
     user.backup_codes = json.dumps([User.hash_password(code) for code in backup_codes])
     db.commit()
     

@@ -3393,10 +3393,32 @@ async function disable2FA(event) {
 }
 
 // Initialize user profile on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initAuth();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check auth and require 2FA if needed
+    const authValid = await requireAuth();
+    if (!authValid) {
+        return; // Stop loading if redirecting or showing 2FA modal
+    }
+    
     updateUserProfileDisplay();
+    hideAdminOnlyNavItems();
 });
+
+// Hide nav items that require admin role
+function hideAdminOnlyNavItems() {
+    const role = getUserRole();
+    
+    // Users and Settings are admin-only
+    const usersNav = document.querySelector('a[onclick*="showSection(\'users\')"]');
+    const settingsNav = document.querySelector('a[onclick*="showSection(\'settings\')"]');
+    const configNav = document.querySelector('a[onclick*="showSection(\'config\')"]');
+    
+    if (!isAdmin()) {
+        if (usersNav) usersNav.style.display = 'none';
+        if (settingsNav) settingsNav.style.display = 'none';
+        if (configNav) configNav.style.display = 'none';
+    }
+}
 
 // ============== Admin Setup 2FA for User ==============
 
