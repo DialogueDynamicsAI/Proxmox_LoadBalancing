@@ -386,9 +386,28 @@ body {
     color: var(--accent-primary);
 }
 
+.status-value .count-detail {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
 .status-label {
     font-size: 0.875rem;
     color: var(--text-secondary);
+}
+
+.status-label small {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+}
+
+.last-refresh {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-right: 0.5rem;
 }
 
 /* Gauges */

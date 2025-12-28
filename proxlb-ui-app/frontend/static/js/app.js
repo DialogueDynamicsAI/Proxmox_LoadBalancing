@@ -164,6 +164,12 @@ async function loadDashboard() {
     ]);
 }
 
+async function refreshDashboard() {
+    showToast('Refreshing...', 'info');
+    await loadDashboard();
+    showToast('Dashboard updated', 'success');
+}
+
 async function loadClusterStatus() {
     try {
         const data = await apiGet('/cluster');
@@ -171,18 +177,45 @@ async function loadClusterStatus() {
         // Update cluster name
         document.getElementById('cluster-name').textContent = data.cluster_name || 'Cluster';
         
-        // Update counts
-        document.getElementById('node-count').textContent = data.nodes?.total || 0;
-        document.getElementById('vm-count').textContent = data.guests?.vms?.total || 0;
-        document.getElementById('ct-count').textContent = data.guests?.containers?.total || 0;
+        // Update node counts
+        const nodeCount = document.getElementById('node-count');
+        if (nodeCount) {
+            nodeCount.innerHTML = `${data.nodes?.online || 0}<span class="count-detail">/${data.nodes?.total || 0}</span>`;
+        }
         
-        // Update gauges
+        // Update VM counts with online/offline breakdown
+        const vmCount = document.getElementById('vm-count');
+        if (vmCount) {
+            const running = data.guests?.vms?.running || 0;
+            const total = data.guests?.vms?.total || 0;
+            vmCount.innerHTML = `${running}<span class="count-detail">/${total}</span>`;
+        }
+        
+        // Update container counts with online/offline breakdown
+        const ctCount = document.getElementById('ct-count');
+        if (ctCount) {
+            const running = data.guests?.containers?.running || 0;
+            const total = data.guests?.containers?.total || 0;
+            ctCount.innerHTML = `${running}<span class="count-detail">/${total}</span>`;
+        }
+        
+        // Update gauges (only running VMs use resources)
         updateGauge('cpu', data.resources?.cpu?.percent || 0);
         updateGauge('mem', data.resources?.memory?.percent || 0);
         updateGauge('disk', data.resources?.disk?.percent || 0);
         
+        // Update last refresh time
+        updateLastRefreshTime();
+        
     } catch (error) {
         showToast('Failed to load cluster status', 'error');
+    }
+}
+
+function updateLastRefreshTime() {
+    const el = document.getElementById('last-refresh');
+    if (el) {
+        el.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
     }
 }
 
@@ -1730,12 +1763,24 @@ document.getElementById('confirm-modal')?.addEventListener('click', (e) => {
 // ============== Auto Refresh ==============
 
 function startAutoRefresh() {
-    // Refresh dashboard every 30 seconds
+    // Refresh dashboard every 15 seconds
     refreshIntervals.dashboard = setInterval(() => {
         if (currentPage === 'dashboard') {
             loadDashboard();
         }
-    }, 30000);
+    }, 15000);
+    
+    // Refresh current page data every 20 seconds
+    refreshIntervals.page = setInterval(() => {
+        switch (currentPage) {
+            case 'nodes':
+                loadNodes();
+                break;
+            case 'guests':
+                loadGuests();
+                break;
+        }
+    }, 20000);
     
     // Refresh service status every 10 seconds
     refreshIntervals.status = setInterval(() => {

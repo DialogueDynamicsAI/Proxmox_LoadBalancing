@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=3">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -96,6 +96,10 @@
                 <header class="page-header">
                     <h1>Cluster <em>Dashboard</em></h1>
                     <div class="header-actions">
+                        <span class="last-refresh" id="last-refresh"></span>
+                        <button class="btn btn-secondary" onclick="refreshDashboard()">
+                            <span>🔄</span> Refresh
+                        </button>
                         <button class="btn btn-primary" onclick="triggerRebalance()">
                             <span>⚡</span> Rebalance Now
                         </button>
@@ -113,15 +117,15 @@
                             <div class="status-grid">
                                 <div class="status-item">
                                     <span class="status-value" id="node-count">-</span>
-                                    <span class="status-label">Nodes</span>
+                                    <span class="status-label">Nodes <small>(online/total)</small></span>
                                 </div>
                                 <div class="status-item">
                                     <span class="status-value" id="vm-count">-</span>
-                                    <span class="status-label">VMs</span>
+                                    <span class="status-label">VMs <small>(running/total)</small></span>
                                 </div>
                                 <div class="status-item">
                                     <span class="status-value" id="ct-count">-</span>
-                                    <span class="status-label">Containers</span>
+                                    <span class="status-label">Containers <small>(running/total)</small></span>
                                 </div>
                             </div>
                         </div>
@@ -914,7 +918,7 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js?v=3"></script>
+    <script src="/static/js/app.js?v=4"></script>
 </body>
 </html>
 
