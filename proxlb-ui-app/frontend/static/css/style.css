@@ -488,6 +488,20 @@ body {
     color: var(--accent-primary);
 }
 
+.next-run-timer.manual-mode .timer-value {
+    color: var(--accent-warning);
+    font-size: 1.5rem;
+}
+
+.next-run-timer.manual-mode .timer-label {
+    color: var(--text-muted);
+}
+
+.migration-item.failed {
+    border-left: 3px solid var(--accent-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
 .balancing-info {
     display: flex;
     flex-direction: column;

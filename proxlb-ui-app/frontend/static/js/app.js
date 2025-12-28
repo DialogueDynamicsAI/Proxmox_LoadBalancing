@@ -278,21 +278,43 @@ async function loadNodesOverview() {
 
 async function loadMigrations() {
     try {
-        const data = await apiGet('/migrations?limit=10');
         const container = document.getElementById('migration-list');
-        
         if (!container) return;
         
-        if (!data.migrations || data.migrations.length === 0) {
+        // Get migrations from both logs and tasks
+        const [logsData, tasksData] = await Promise.all([
+            apiGet('/migrations?limit=10'),
+            apiGet('/tasks?limit=50')
+        ]);
+        
+        let migrations = logsData.migrations || [];
+        
+        // Add migrations from tasks
+        const taskMigrations = (tasksData.tasks || [])
+            .filter(t => t.is_migration)
+            .slice(0, 10)
+            .map(t => ({
+                guest_name: t.description || t.type,
+                from_node: t.node,
+                to_node: '-',
+                timestamp: formatTimestamp(t.starttime),
+                status: t.success ? 'completed' : 'failed'
+            }));
+        
+        // Combine and sort by timestamp (most recent first)
+        migrations = [...migrations, ...taskMigrations]
+            .slice(0, 10);
+        
+        if (migrations.length === 0) {
             container.innerHTML = '<p class="empty-state">No recent migrations</p>';
             return;
         }
         
-        container.innerHTML = data.migrations.map(m => `
-            <div class="migration-item">
-                <span class="migration-guest">${m.guest_name}</span>
+        container.innerHTML = migrations.map(m => `
+            <div class="migration-item ${m.status === 'failed' ? 'failed' : ''}">
+                <span class="migration-guest">${m.guest_name || 'Unknown'}</span>
                 <span class="migration-path">
-                    ${m.from_node}<span class="arrow">→</span>${m.to_node}
+                    ${m.from_node || '-'}<span class="arrow">→</span>${m.to_node || '-'}
                 </span>
                 <span class="migration-time">${m.timestamp || ''}</span>
             </div>
@@ -303,28 +325,112 @@ async function loadMigrations() {
     }
 }
 
+let nextRunTime = null;
+let countdownInterval = null;
+
 async function loadServiceStatus() {
     try {
         const data = await apiGet('/status');
+        const config = await apiGet('/config');
         
-        updateServiceStatusDisplay(data.proxlb?.running || false);
+        const isRunning = data.proxlb?.running || false;
+        const isDaemonMode = config.config?.service?.daemon !== false;
+        
+        updateServiceStatusDisplay(isRunning);
         
         // Update balance method/mode display
-        const config = await apiGet('/config');
         if (config.config?.balancing) {
-            document.getElementById('balance-method').textContent = config.config.balancing.method || 'memory';
-            document.getElementById('balance-mode').textContent = config.config.balancing.mode || 'used';
+            const methodEl = document.getElementById('balance-method');
+            const modeEl = document.getElementById('balance-mode');
+            if (methodEl) methodEl.textContent = (config.config.balancing.method || 'memory').charAt(0).toUpperCase() + (config.config.balancing.method || 'memory').slice(1);
+            if (modeEl) modeEl.textContent = (config.config.balancing.mode || 'used').charAt(0).toUpperCase() + (config.config.balancing.mode || 'used').slice(1);
         }
         
-        // Update next run timer
-        if (config.config?.service?.schedule) {
-            const interval = config.config.service.schedule.interval || 1;
-            const format = config.config.service.schedule.format || 'hours';
-            document.getElementById('next-run-timer').textContent = `${interval} ${format}`;
+        // Update mode display and countdown
+        const timerContainer = document.getElementById('next-run-container');
+        const timerEl = document.getElementById('next-run-timer');
+        const timerLabelEl = document.getElementById('next-run-label');
+        
+        if (timerContainer && timerEl && timerLabelEl) {
+            if (isDaemonMode && isRunning) {
+                // Automatic mode - show countdown
+                timerLabelEl.textContent = 'Next Rebalance';
+                
+                // Calculate next run based on started time and interval
+                const interval = config.config?.service?.schedule?.interval || 1;
+                const format = config.config?.service?.schedule?.format || 'hours';
+                const startedAt = data.proxlb?.started ? new Date(data.proxlb.started) : new Date();
+                
+                // Calculate interval in seconds
+                let intervalSec = interval;
+                if (format === 'hours') intervalSec = interval * 3600;
+                else if (format === 'minutes') intervalSec = interval * 60;
+                
+                // Find next run time
+                const now = new Date();
+                const elapsed = (now - startedAt) / 1000;
+                const cyclesPassed = Math.floor(elapsed / intervalSec);
+                nextRunTime = new Date(startedAt.getTime() + ((cyclesPassed + 1) * intervalSec * 1000));
+                
+                // Start countdown
+                updateCountdown();
+                if (!countdownInterval) {
+                    countdownInterval = setInterval(updateCountdown, 1000);
+                }
+                
+                timerContainer.classList.remove('manual-mode');
+            } else if (!isDaemonMode) {
+                // Manual mode
+                timerLabelEl.textContent = 'Mode';
+                timerEl.textContent = 'Manual';
+                timerContainer.classList.add('manual-mode');
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+            } else {
+                // Daemon mode but not running
+                timerLabelEl.textContent = 'Status';
+                timerEl.textContent = 'Stopped';
+                timerContainer.classList.remove('manual-mode');
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+            }
         }
         
     } catch (error) {
         console.error('Failed to load service status:', error);
+    }
+}
+
+function updateCountdown() {
+    const timerEl = document.getElementById('next-run-timer');
+    if (!timerEl || !nextRunTime) return;
+    
+    const now = new Date();
+    const diff = nextRunTime - now;
+    
+    if (diff <= 0) {
+        timerEl.textContent = 'Running...';
+        // Reset for next cycle
+        setTimeout(() => {
+            loadServiceStatus();
+        }, 5000);
+        return;
+    }
+    
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    
+    if (hours > 0) {
+        timerEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+        timerEl.textContent = `${minutes}m ${seconds}s`;
+    } else {
+        timerEl.textContent = `${seconds}s`;
     }
 }
 

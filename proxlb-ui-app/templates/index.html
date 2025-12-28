@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -179,9 +179,9 @@
                         </div>
                         <div class="card-body">
                             <div class="next-run-info">
-                                <div class="next-run-timer">
-                                    <span class="timer-label">Next Rebalance</span>
-                                    <span class="timer-value" id="next-run-timer">--:--</span>
+                                <div class="next-run-timer" id="next-run-container">
+                                    <span class="timer-label" id="next-run-label">Next Rebalance</span>
+                                    <span class="timer-value" id="next-run-timer">Loading...</span>
                                 </div>
                                 <div class="balancing-info">
                                     <span class="info-item">
@@ -918,7 +918,7 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js?v=4"></script>
+    <script src="/static/js/app.js?v=5"></script>
 </body>
 </html>
 
