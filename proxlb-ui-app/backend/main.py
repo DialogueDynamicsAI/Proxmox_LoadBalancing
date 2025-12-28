@@ -326,7 +326,8 @@ async def get_best_node():
     
     try:
         result = proxlb_service.get_best_node()
-        return {"success": True, "best_node": result}
+        # Return the result directly - it already has success, best_node, and output fields
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

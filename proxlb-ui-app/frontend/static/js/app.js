@@ -1007,29 +1007,84 @@ async function triggerDryRun() {
         
         if (result.success) {
             const output = result.output || [];
-            const migrations = result.migrations || [];
+            
+            // Parse the output to find guests and their migration plans
+            let guests = {};
+            let nodes = {};
+            let plannedMigrations = [];
+            
+            // Try to parse JSON from output (ProxLB returns JSON with -j flag)
+            const fullOutput = output.join('\n');
+            const jsonMatch = fullOutput.match(/\{[\s\S]*"guests"[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    const data = JSON.parse(jsonMatch[0]);
+                    guests = data.guests || {};
+                    nodes = data.nodes || {};
+                    
+                    // Find VMs that would be migrated (node_current != node_target)
+                    for (const [name, guest] of Object.entries(guests)) {
+                        if (guest.node_current && guest.node_target && guest.node_current !== guest.node_target) {
+                            plannedMigrations.push({
+                                name: name,
+                                type: guest.type === 'ct' ? 'Container' : 'VM',
+                                from: guest.node_current,
+                                to: guest.node_target,
+                                memory: guest.memory_used ? formatBytes(guest.memory_used) : 'N/A',
+                                cpu: guest.cpu_used ? (guest.cpu_used * 100).toFixed(1) + '%' : 'N/A'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.log('Could not parse JSON from output:', e);
+                }
+            }
             
             let content = '';
-            if (migrations.length > 0) {
-                content += '<div class="results-section"><strong>Planned Migrations (Dry Run):</strong></div>';
-                migrations.forEach(m => {
-                    if (typeof m === 'object' && m.guest) {
-                        content += `<div class="log-line migration">🔄 ${escapeHtml(m.type || 'VM')} <strong>${escapeHtml(m.guest)}</strong>: ${escapeHtml(m.from_node)} → ${escapeHtml(m.to_node)}</div>`;
-                    } else if (typeof m === 'object' && m.message) {
-                        content += `<div class="log-line migration">📋 ${escapeHtml(m.message)}</div>`;
-                    } else {
-                        content += `<div class="log-line migration">📋 ${escapeHtml(String(m))}</div>`;
-                    }
+            
+            // Summary section
+            content += '<div class="dry-run-summary">';
+            content += '<div class="summary-header">📊 Dry Run Analysis</div>';
+            content += '<div class="summary-stats">';
+            content += `<div class="stat-item"><span class="stat-value">${Object.keys(guests).length}</span><span class="stat-label">VMs Analyzed</span></div>`;
+            content += `<div class="stat-item"><span class="stat-value">${plannedMigrations.length}</span><span class="stat-label">Migrations Needed</span></div>`;
+            content += `<div class="stat-item"><span class="stat-value">${Object.keys(nodes).length || 3}</span><span class="stat-label">Nodes</span></div>`;
+            content += '</div></div>';
+            
+            // Migration details
+            if (plannedMigrations.length > 0) {
+                content += '<div class="results-section"><strong>🔄 Planned Migrations:</strong></div>';
+                content += '<div class="migration-table">';
+                content += '<div class="migration-header"><span>Guest</span><span>Type</span><span>From</span><span>To</span></div>';
+                plannedMigrations.forEach(m => {
+                    content += `<div class="migration-row">
+                        <span class="guest-name">${escapeHtml(m.name)}</span>
+                        <span class="guest-type">${m.type}</span>
+                        <span class="node-from">${escapeHtml(m.from)}</span>
+                        <span class="node-to">${escapeHtml(m.to)}</span>
+                    </div>`;
                 });
+                content += '</div>';
+                content += `<div class="migration-note">💡 These migrations would optimize cluster balance based on memory usage.</div>`;
             } else {
-                content += '<div class="log-line">✅ No migrations needed - cluster is balanced.</div>';
+                content += '<div class="balanced-message">';
+                content += '<div class="balanced-icon">✅</div>';
+                content += '<div class="balanced-text">Cluster is Balanced</div>';
+                content += '<div class="balanced-subtext">No migrations needed. All nodes have similar resource usage.</div>';
+                content += '</div>';
             }
-            if (output.length > 0) {
-                content += '<div class="results-section" style="margin-top: 1rem;"><strong>Full Output:</strong></div>';
-                output.forEach(line => {
-                    content += `<div class="log-line">${escapeHtml(line)}</div>`;
-                });
+            
+            // Collapsible raw output
+            content += '<details class="raw-output-details">';
+            content += '<summary>📋 Show Raw Output</summary>';
+            content += '<div class="raw-output">';
+            output.slice(0, 20).forEach(line => {
+                content += `<div class="log-line">${escapeHtml(line)}</div>`;
+            });
+            if (output.length > 20) {
+                content += `<div class="log-line muted">... and ${output.length - 20} more lines</div>`;
             }
+            content += '</div></details>';
             
             updateResultsModal('success', 'Dry run completed', content);
         } else {
