@@ -970,22 +970,56 @@ async function triggerRebalance() {
             const migrations = result.migrations || [];
             
             let content = '';
+            
+            // Summary section
+            content += '<div class="dry-run-summary">';
+            content += '<div class="summary-header">⚡ Rebalance Results</div>';
+            content += '<div class="summary-stats">';
+            content += `<div class="stat-item"><span class="stat-value">${migrations.length}</span><span class="stat-label">Migrations Executed</span></div>`;
+            content += '</div></div>';
+            
             if (migrations.length > 0) {
-                content += '<div class="results-section"><strong>Migrations:</strong></div>';
-                migrations.forEach(line => {
-                    content += `<div class="log-line migration">🔄 ${escapeHtml(line)}</div>`;
+                content += `
+                    <div class="cluster-status-box unbalanced">
+                        <div class="cluster-status-icon">🔄</div>
+                        <div class="cluster-status-message">Migrations Completed</div>
+                        <div class="cluster-status-description">The following VMs were migrated to balance the cluster.</div>
+                    </div>
+                `;
+                content += '<div class="results-section"><strong>Migration Details:</strong></div>';
+                migrations.forEach(m => {
+                    if (m.guest) {
+                        // Structured migration object
+                        content += `<div class="log-line migration">🔄 <strong>${escapeHtml(m.type || 'VM')}</strong> ${escapeHtml(m.guest)} moved from <strong>${escapeHtml(m.from_node)}</strong> → <strong>${escapeHtml(m.to_node)}</strong></div>`;
+                    } else if (m.message) {
+                        // Fallback: raw log message
+                        content += `<div class="log-line migration">🔄 ${escapeHtml(m.message)}</div>`;
+                    } else {
+                        // Unknown format - stringify
+                        content += `<div class="log-line migration">🔄 ${escapeHtml(JSON.stringify(m))}</div>`;
+                    }
                 });
+            } else {
+                content += `
+                    <div class="cluster-status-box balanced">
+                        <div class="cluster-status-icon">✅</div>
+                        <div class="cluster-status-message">Cluster Already Balanced</div>
+                        <div class="cluster-status-description">No migrations were needed.</div>
+                    </div>
+                `;
             }
+            
+            // Raw output in collapsible section
             if (output.length > 0) {
-                content += '<div class="results-section"><strong>Output:</strong></div>';
+                content += '<details class="raw-output-details">';
+                content += '<summary>📋 Show Raw Logs</summary>';
+                content += '<div class="raw-output">';
                 output.forEach(line => {
                     const lineClass = line.toLowerCase().includes('error') ? 'error' : 
                                       line.toLowerCase().includes('warning') ? 'warning' : '';
                     content += `<div class="log-line ${lineClass}">${escapeHtml(line)}</div>`;
                 });
-            }
-            if (!content) {
-                content = '<div class="log-line">Rebalance completed with no migrations needed.</div>';
+                content += '</div></details>';
             }
             
             updateResultsModal('success', result.message || 'Rebalance completed successfully', content);
