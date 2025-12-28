@@ -466,33 +466,39 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>🔌 Proxmox API Connection</h3>
+                            <span class="info-icon" title="Configure how ProxLB connects to your Proxmox cluster API">ℹ️</span>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Connection settings for the Proxmox VE API. ProxLB uses this to monitor resources and migrate VMs.</p>
                             <form class="settings-form" id="api-config-form">
                                 <div class="form-group">
-                                    <label for="cfg-hosts">API Hosts (comma separated)</label>
+                                    <label for="cfg-hosts">API Hosts <span class="info-icon" title="IP addresses or hostnames of your Proxmox nodes. ProxLB will try each host in order until one responds.">ℹ️</span></label>
                                     <input type="text" id="cfg-hosts" placeholder="10.80.11.11, 10.80.11.12, 10.80.11.13">
+                                    <small class="form-hint">Comma-separated list of Proxmox node IPs or hostnames</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-user">Username</label>
+                                    <label for="cfg-user">Username <span class="info-icon" title="Proxmox user with VM migration permissions. Format: user@realm (e.g., proxlb@pve or admin@pam)">ℹ️</span></label>
                                     <input type="text" id="cfg-user" placeholder="proxlb@pve">
+                                    <small class="form-hint">Proxmox user with VM.Migrate and VM.Monitor permissions</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-pass">Password</label>
+                                    <label for="cfg-pass">Password <span class="info-icon" title="Password for the Proxmox API user">ℹ️</span></label>
                                     <input type="password" id="cfg-pass" placeholder="********">
                                     <small class="form-hint">Leave blank to keep current password</small>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="cfg-timeout">Timeout (seconds)</label>
+                                        <label for="cfg-timeout">Timeout <span class="info-icon" title="How long to wait for API responses before timing out">ℹ️</span></label>
                                         <input type="number" id="cfg-timeout" min="1" max="60" value="10">
+                                        <small class="form-hint">API request timeout in seconds</small>
                                     </div>
                                     <div class="form-group">
-                                        <label>SSL Verification</label>
+                                        <label>SSL Verification <span class="info-icon" title="Enable to verify SSL certificates. Disable for self-signed certificates.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-ssl">
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Verify SSL certs (disable for self-signed)</small>
                                     </div>
                                 </div>
                             </form>
@@ -503,24 +509,28 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>🖥️ Cluster Settings</h3>
+                            <span class="info-icon" title="Control which nodes participate in load balancing">ℹ️</span>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Define which nodes are included in balancing and set cluster-wide options.</p>
                             <form class="settings-form" id="cluster-config-form">
                                 <div class="form-group">
-                                    <label for="cfg-maintenance-nodes">Maintenance Nodes (comma separated)</label>
-                                    <input type="text" id="cfg-maintenance-nodes" placeholder="node1, node2">
+                                    <label for="cfg-maintenance-nodes">Maintenance Nodes <span class="info-icon" title="Nodes currently in maintenance mode. VMs will be migrated OFF these nodes to other available nodes. Use this when you need to reboot or update a node.">ℹ️</span></label>
+                                    <input type="text" id="cfg-maintenance-nodes" placeholder="pcdc-1-prox01">
+                                    <small class="form-hint">VMs will be migrated away from these nodes (for reboots/updates)</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-ignore-nodes">Ignored Nodes (comma separated)</label>
-                                    <input type="text" id="cfg-ignore-nodes" placeholder="node3">
+                                    <label for="cfg-ignore-nodes">Ignored Nodes <span class="info-icon" title="Nodes completely excluded from load balancing. VMs on these nodes will NOT be migrated, and no VMs will be migrated TO these nodes. Use for special-purpose nodes.">ℹ️</span></label>
+                                    <input type="text" id="cfg-ignore-nodes" placeholder="backup-node, dev-node">
+                                    <small class="form-hint">These nodes are excluded from all balancing operations</small>
                                 </div>
                                 <div class="form-group">
-                                    <label>Overprovisioning</label>
+                                    <label>Overprovisioning <span class="info-icon" title="When enabled, ProxLB considers assigned/configured resources rather than actual usage. Useful when VMs don't always use their full allocation.">ℹ️</span></label>
                                     <label class="toggle">
                                         <input type="checkbox" id="cfg-overprovisioning" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
-                                    <small class="form-hint">Allow resource overcommitment</small>
+                                    <small class="form-hint">Allow VMs to be allocated more resources than physically available</small>
                                 </div>
                             </form>
                         </div>
@@ -530,118 +540,132 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>⚖️ Balancing Settings</h3>
+                            <span class="info-icon" title="Configure how VMs are distributed across nodes">ℹ️</span>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Control how ProxLB decides when and how to migrate VMs for optimal resource distribution.</p>
                             <form class="settings-form" id="balancing-config-form">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>Enable Balancing</label>
+                                        <label>Enable Balancing <span class="info-icon" title="Master switch for automatic load balancing. When disabled, no automatic migrations occur.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-balance-enable" checked>
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Turn automatic balancing on/off</small>
                                     </div>
                                     <div class="form-group">
-                                        <label>Live Migration</label>
+                                        <label>Live Migration <span class="info-icon" title="Migrate VMs while they're running (no downtime). If disabled, VMs are stopped before migration.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-live" checked>
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Migrate running VMs without downtime</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="cfg-method">Balancing Method</label>
+                                        <label for="cfg-method">Balancing Method <span class="info-icon" title="Which resource to optimize: Memory (RAM usage), CPU (processor usage), or Disk (storage I/O)">ℹ️</span></label>
                                         <select id="cfg-method">
                                             <option value="memory">Memory</option>
                                             <option value="cpu">CPU</option>
                                             <option value="disk">Disk</option>
                                         </select>
+                                        <small class="form-hint">Primary resource to balance across nodes</small>
                                     </div>
                                     <div class="form-group">
-                                        <label for="cfg-mode">Balancing Mode</label>
+                                        <label for="cfg-mode">Balancing Mode <span class="info-icon" title="Used: actual real-time usage. Assigned: configured/allocated resources. PSI: Linux Pressure Stall Information (advanced)">ℹ️</span></label>
                                         <select id="cfg-mode">
                                             <option value="used">Used Resources</option>
                                             <option value="assigned">Assigned Resources</option>
                                             <option value="psi">PSI (Pressure)</option>
                                         </select>
+                                        <small class="form-hint">How to measure resource consumption</small>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-balanciness">Balanciness Threshold (%)</label>
+                                    <label for="cfg-balanciness">Balanciness Threshold <span class="info-icon" title="Minimum percentage difference between nodes required to trigger migration. Lower = more aggressive balancing. Higher = fewer migrations.">ℹ️</span></label>
                                     <div class="range-group">
                                         <input type="range" id="cfg-balanciness" min="1" max="50" value="5">
                                         <span class="range-value" id="cfg-balanciness-value">5%</span>
                                     </div>
-                                    <small class="form-hint">Minimum difference required to trigger migration</small>
+                                    <small class="form-hint">Min difference between nodes to trigger migration (lower = more migrations)</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-memory-threshold">Memory Threshold (%)</label>
+                                    <label for="cfg-memory-threshold">Memory Threshold <span class="info-icon" title="Node memory usage percentage that triggers rebalancing. When a node exceeds this, VMs may be migrated away.">ℹ️</span></label>
                                     <div class="range-group">
                                         <input type="range" id="cfg-memory-threshold" min="50" max="100" value="75">
                                         <span class="range-value" id="cfg-memory-threshold-value">75%</span>
                                     </div>
-                                    <small class="form-hint">Threshold before rebalancing is triggered</small>
+                                    <small class="form-hint">Migrate VMs when node memory exceeds this level</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-balance-types">Balance Types</label>
+                                    <label for="cfg-balance-types">Balance Types <span class="info-icon" title="Select which guest types to include in load balancing. VMs = QEMU virtual machines. Containers = LXC containers.">ℹ️</span></label>
                                     <div class="checkbox-group">
                                         <label class="checkbox-label">
-                                            <input type="checkbox" id="cfg-balance-vm" checked> VMs
+                                            <input type="checkbox" id="cfg-balance-vm" checked> VMs (QEMU)
                                         </label>
                                         <label class="checkbox-label">
-                                            <input type="checkbox" id="cfg-balance-ct" checked> Containers
+                                            <input type="checkbox" id="cfg-balance-ct" checked> Containers (LXC)
                                         </label>
                                     </div>
+                                    <small class="form-hint">Which guest types to include in balancing</small>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>Enforce Affinity</label>
+                                        <label>Enforce Affinity <span class="info-icon" title="Strictly enforce affinity rules. VMs with affinity tags must stay together on the same node.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-enforce-affinity">
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Keep affinity-tagged VMs together</small>
                                     </div>
                                     <div class="form-group">
-                                        <label>With Local Disks</label>
+                                        <label>With Local Disks <span class="info-icon" title="Include VMs with local storage in migrations. Requires copying disk data which takes longer.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-local-disks" checked>
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Migrate VMs even if they use local storage</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>With Conntrack State</label>
+                                        <label>With Conntrack <span class="info-icon" title="Preserve network connection tracking state during migration. Keeps established connections alive.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-conntrack" checked>
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Preserve active network connections</small>
                                     </div>
                                     <div class="form-group">
-                                        <label>Balance Larger Guests First</label>
+                                        <label>Larger Guests First <span class="info-icon" title="Migrate larger VMs (more RAM) first. Can help distribute load faster but may cause longer individual migrations.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-larger-first">
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Prioritize migrating bigger VMs first</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>Parallel Migrations</label>
+                                        <label>Parallel Migrations <span class="info-icon" title="Migrate multiple VMs simultaneously. Faster but uses more network bandwidth and resources.">ℹ️</span></label>
                                         <label class="toggle">
                                             <input type="checkbox" id="cfg-parallel">
                                             <span class="toggle-slider"></span>
                                         </label>
+                                        <small class="form-hint">Migrate multiple VMs at once</small>
                                     </div>
                                     <div class="form-group">
-                                        <label for="cfg-parallel-jobs">Parallel Jobs</label>
+                                        <label for="cfg-parallel-jobs">Parallel Jobs <span class="info-icon" title="Maximum number of simultaneous migrations when parallel is enabled.">ℹ️</span></label>
                                         <input type="number" id="cfg-parallel-jobs" min="1" max="10" value="1">
+                                        <small class="form-hint">Max concurrent migrations</small>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-max-validation">Max Job Validation (seconds)</label>
+                                    <label for="cfg-max-validation">Max Job Validation <span class="info-icon" title="Maximum time in seconds to wait for a migration job to complete before timing out.">ℹ️</span></label>
                                     <input type="number" id="cfg-max-validation" min="60" max="7200" value="1800">
+                                    <small class="form-hint">Migration timeout in seconds (1800 = 30 minutes)</small>
                                 </div>
                             </form>
                         </div>
@@ -651,36 +675,41 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>🔄 Service Settings</h3>
+                            <span class="info-icon" title="Configure the ProxLB background service behavior">ℹ️</span>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Control how often ProxLB runs and its logging behavior.</p>
                             <form class="settings-form" id="service-config-form">
                                 <div class="form-group">
-                                    <label>Daemon Mode</label>
+                                    <label>Daemon Mode <span class="info-icon" title="Run ProxLB as a continuous background service. When enabled, it runs on a schedule. When disabled, it runs once and exits.">ℹ️</span></label>
                                     <label class="toggle">
                                         <input type="checkbox" id="cfg-daemon" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
-                                    <small class="form-hint">Run as background service</small>
+                                    <small class="form-hint">Run continuously in background (recommended)</small>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="cfg-schedule-interval">Schedule Interval</label>
+                                        <label for="cfg-schedule-interval">Schedule Interval <span class="info-icon" title="How often ProxLB checks cluster balance and performs migrations if needed.">ℹ️</span></label>
                                         <input type="number" id="cfg-schedule-interval" min="1" max="24" value="1">
+                                        <small class="form-hint">How often to check balance</small>
                                     </div>
                                     <div class="form-group">
-                                        <label for="cfg-schedule-format">Interval Format</label>
+                                        <label for="cfg-schedule-format">Interval Format <span class="info-icon" title="Time unit for the schedule interval: hours or minutes.">ℹ️</span></label>
                                         <select id="cfg-schedule-format">
                                             <option value="hours">Hours</option>
                                             <option value="minutes">Minutes</option>
                                         </select>
+                                        <small class="form-hint">Hours or minutes</small>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label>Delay Before Start</label>
+                                    <label>Delay Before Start <span class="info-icon" title="Wait before the first balancing run after service starts. Useful to let the cluster stabilize after boot.">ℹ️</span></label>
                                     <label class="toggle">
                                         <input type="checkbox" id="cfg-delay-enable">
                                         <span class="toggle-slider"></span>
                                     </label>
+                                    <small class="form-hint">Wait before first run (useful after cluster boot)</small>
                                 </div>
                                 <div class="form-row" id="delay-settings" style="display: none;">
                                     <div class="form-group">
@@ -696,13 +725,14 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-log-level">Log Level</label>
+                                    <label for="cfg-log-level">Log Level <span class="info-icon" title="Controls log verbosity. DEBUG: everything. INFO: normal operations. WARNING: potential issues. ERROR: only errors.">ℹ️</span></label>
                                     <select id="cfg-log-level">
-                                        <option value="DEBUG">DEBUG</option>
-                                        <option value="INFO" selected>INFO</option>
-                                        <option value="WARNING">WARNING</option>
-                                        <option value="ERROR">ERROR</option>
+                                        <option value="DEBUG">DEBUG (verbose)</option>
+                                        <option value="INFO" selected>INFO (normal)</option>
+                                        <option value="WARNING">WARNING (less)</option>
+                                        <option value="ERROR">ERROR (minimal)</option>
                                     </select>
+                                    <small class="form-hint">How much detail to log</small>
                                 </div>
                             </form>
                         </div>
