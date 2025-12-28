@@ -112,9 +112,10 @@ function initForms() {
         guestSearch.addEventListener('input', filterGuests);
     }
     
-    const guestFilter = document.getElementById('guest-filter');
-    if (guestFilter) {
-        guestFilter.addEventListener('change', filterGuests);
+    // Guest node filter
+    const guestNodeFilter = document.getElementById('guest-node-filter');
+    if (guestNodeFilter) {
+        guestNodeFilter.addEventListener('change', filterGuests);
     }
     
     // Log level filter
@@ -403,32 +404,133 @@ async function toggleMaintenance(nodeName, enable) {
 // ============== Guests Page ==============
 
 let allGuests = [];
+let guestFilters = {
+    search: '',
+    status: 'all',
+    type: 'all',
+    node: 'all'
+};
 
 async function loadGuests() {
     try {
         const data = await apiGet('/guests');
         allGuests = data.guests || [];
-        renderGuests(allGuests);
+        
+        // Populate node filter dropdown
+        populateNodeFilter();
+        
+        // Apply current filters and render
+        filterGuests();
     } catch (error) {
         showToast('Failed to load guests', 'error');
     }
+}
+
+function refreshGuests() {
+    loadGuests();
+    showToast('Guests refreshed', 'info');
+}
+
+function populateNodeFilter() {
+    const nodeSelect = document.getElementById('guest-node-filter');
+    if (!nodeSelect) return;
+    
+    // Get unique nodes
+    const nodes = [...new Set(allGuests.map(g => g.node))].sort();
+    
+    // Build options
+    nodeSelect.innerHTML = '<option value="all">All Nodes</option>' + 
+        nodes.map(node => `<option value="${node}">${node}</option>`).join('');
+    
+    // Restore previous selection if still valid
+    if (guestFilters.node !== 'all' && nodes.includes(guestFilters.node)) {
+        nodeSelect.value = guestFilters.node;
+    }
+}
+
+function setStatusFilter(value) {
+    guestFilters.status = value;
+    
+    // Update toggle button states
+    document.querySelectorAll('.filter-toggle[data-filter="status"]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+    });
+    
+    filterGuests();
+}
+
+function setTypeFilter(value) {
+    guestFilters.type = value;
+    
+    // Update toggle button states
+    document.querySelectorAll('.filter-toggle[data-filter="type"]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+    });
+    
+    filterGuests();
+}
+
+function filterGuests() {
+    // Get current filter values
+    const search = document.getElementById('guest-search')?.value.toLowerCase() || '';
+    const nodeFilter = document.getElementById('guest-node-filter')?.value || 'all';
+    
+    guestFilters.search = search;
+    guestFilters.node = nodeFilter;
+    
+    const filtered = allGuests.filter(guest => {
+        // Search filter (name or ID)
+        const matchesSearch = !search || 
+            guest.name?.toLowerCase().includes(search) ||
+            guest.vmid.toString().includes(search);
+        
+        // Status filter
+        const matchesStatus = guestFilters.status === 'all' || guest.status === guestFilters.status;
+        
+        // Type filter
+        const matchesType = guestFilters.type === 'all' || guest.type === guestFilters.type;
+        
+        // Node filter
+        const matchesNode = guestFilters.node === 'all' || guest.node === guestFilters.node;
+        
+        return matchesSearch && matchesStatus && matchesType && matchesNode;
+    });
+    
+    // Update summary
+    const filteredCount = document.getElementById('filtered-count');
+    const totalCount = document.getElementById('total-count');
+    if (filteredCount) filteredCount.textContent = filtered.length;
+    if (totalCount) totalCount.textContent = allGuests.length;
+    
+    renderGuests(filtered);
 }
 
 function renderGuests(guests) {
     const tbody = document.getElementById('guests-tbody');
     if (!tbody) return;
     
+    if (guests.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="empty-table">
+                    <div class="empty-state">No guests match the current filters</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
     tbody.innerHTML = guests.map(guest => {
         const tags = parseTags(guest.tags);
         return `
-            <tr>
-                <td>${guest.vmid}</td>
-                <td>${guest.name || '-'}</td>
+            <tr class="${guest.status}">
+                <td><span class="guest-id">${guest.vmid}</span></td>
+                <td><span class="guest-name">${guest.name || '-'}</span></td>
                 <td>${guest.type === 'qemu' ? '💻 VM' : '📦 CT'}</td>
-                <td>${guest.node}</td>
+                <td><span class="node-badge">${guest.node}</span></td>
                 <td>
                     <span class="status-badge ${guest.status}">
-                        ${guest.status === 'running' ? '● Running' : '○ Stopped'}
+                        ${guest.status === 'running' ? '● Online' : '○ Offline'}
                     </span>
                 </td>
                 <td>${guest.cpu.toFixed(1)}%</td>
@@ -467,24 +569,6 @@ function parseTags(tagsStr) {
         
         return { type, name };
     }).filter(t => t.name);
-}
-
-function filterGuests() {
-    const search = document.getElementById('guest-search')?.value.toLowerCase() || '';
-    const typeFilter = document.getElementById('guest-filter')?.value || 'all';
-    
-    const filtered = allGuests.filter(guest => {
-        const matchesSearch = !search || 
-            guest.name?.toLowerCase().includes(search) ||
-            guest.vmid.toString().includes(search) ||
-            guest.node.toLowerCase().includes(search);
-        
-        const matchesType = typeFilter === 'all' || guest.type === typeFilter;
-        
-        return matchesSearch && matchesType;
-    });
-    
-    renderGuests(filtered);
 }
 
 // ============== Balancing Page ==============

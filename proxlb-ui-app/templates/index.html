@@ -240,16 +240,60 @@
             <!-- Guests Page -->
             <section class="page" id="page-guests">
                 <header class="page-header">
-                    <h1>Virtual Machines & Containers</h1>
+                    <h1>Virtual Machines & <em>Containers</em></h1>
                     <div class="header-actions">
-                        <input type="text" class="search-input" id="guest-search" placeholder="Search guests...">
-                        <select class="filter-select" id="guest-filter">
-                            <option value="all">All Types</option>
-                            <option value="qemu">VMs Only</option>
-                            <option value="lxc">Containers Only</option>
-                        </select>
+                        <button class="btn btn-secondary" onclick="refreshGuests()">
+                            <span>🔄</span> Refresh
+                        </button>
                     </div>
                 </header>
+                
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="text" class="search-input" id="guest-search" placeholder="Search by name or ID...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <div class="filter-toggles">
+                            <button class="filter-toggle active" data-filter="status" data-value="all" onclick="setStatusFilter('all')">
+                                All
+                            </button>
+                            <button class="filter-toggle" data-filter="status" data-value="running" onclick="setStatusFilter('running')">
+                                <span class="status-indicator online"></span> Online
+                            </button>
+                            <button class="filter-toggle" data-filter="status" data-value="stopped" onclick="setStatusFilter('stopped')">
+                                <span class="status-indicator offline"></span> Offline
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Type</label>
+                        <div class="filter-toggles">
+                            <button class="filter-toggle active" data-filter="type" data-value="all" onclick="setTypeFilter('all')">
+                                All
+                            </button>
+                            <button class="filter-toggle" data-filter="type" data-value="qemu" onclick="setTypeFilter('qemu')">
+                                💻 VMs
+                            </button>
+                            <button class="filter-toggle" data-filter="type" data-value="lxc" onclick="setTypeFilter('lxc')">
+                                📦 Containers
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Node</label>
+                        <select class="filter-select" id="guest-node-filter">
+                            <option value="all">All Nodes</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Filter Summary -->
+                <div class="filter-summary" id="filter-summary">
+                    Showing <span id="filtered-count">0</span> of <span id="total-count">0</span> guests
+                </div>
 
                 <div class="table-container">
                     <table class="data-table" id="guests-table">
