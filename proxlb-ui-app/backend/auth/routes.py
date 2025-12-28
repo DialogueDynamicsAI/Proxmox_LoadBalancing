@@ -624,3 +624,131 @@ async def clear_email_logs(user: User = Depends(require_role(["admin"]))):
         return {"success": True, "message": "Email logs cleared"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============== Admin User Management - 2FA & Password Reset ==============
+
+@users_router.post("/{user_id}/reset-2fa")
+async def admin_reset_user_2fa(
+    user_id: int,
+    user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Reset 2FA for a user (Admin only)"""
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Clear 2FA settings
+    target_user.totp_secret = None
+    target_user.totp_enabled = False
+    target_user.backup_codes = None
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"2FA has been reset for user {target_user.username}"
+    }
+
+
+@users_router.post("/{user_id}/reset-password")
+async def admin_reset_user_password(
+    user_id: int,
+    send_email_flag: bool = True,
+    user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Generate a new password for a user and optionally send via email (Admin only)"""
+    import secrets
+    from auth.email_service import send_email
+    
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate new password
+    new_password = secrets.token_urlsafe(12)
+    target_user.hashed_password = User.hash_password(new_password)
+    db.commit()
+    
+    result = {
+        "success": True,
+        "message": f"Password reset for user {target_user.username}",
+        "new_password": new_password,
+        "email_sent": False
+    }
+    
+    # Send email if user has email and flag is set
+    if send_email_flag and target_user.email:
+        email_result = send_email(
+            to_email=target_user.email,
+            subject="Proxmox LoadBalancer - Your Password Has Been Reset",
+            email_type="password_reset",
+            body_html=f"""
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; padding: 30px; border-radius: 12px;">
+                <h2 style="color: #06b6d4; margin-bottom: 20px;">Password Reset</h2>
+                <p style="color: #f1f5f9;">Hello {target_user.full_name or target_user.username},</p>
+                <p style="color: #f1f5f9;">Your password for Proxmox LoadBalancer has been reset by an administrator.</p>
+                <div style="background: #1e293b; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="color: #94a3b8; margin: 0 0 8px 0;">Your new password:</p>
+                    <p style="color: #06b6d4; font-size: 18px; font-weight: bold; margin: 0; font-family: monospace;">{new_password}</p>
+                </div>
+                <p style="color: #f59e0b; font-size: 14px;">⚠️ Please change this password after logging in.</p>
+                <hr style="border: none; border-top: 1px solid #374151; margin: 20px 0;">
+                <p style="color: #64748b; font-size: 12px;">Powered by Dialogue Dynamics</p>
+            </div>
+            """,
+            body_text=f"Your Proxmox LoadBalancer password has been reset. New password: {new_password}"
+        )
+        result["email_sent"] = email_result.get("success", False)
+    
+    return result
+
+
+@users_router.post("/{user_id}/send-password")
+async def admin_send_password_email(
+    user_id: int,
+    user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Send a password reset link to user's email (Admin only)"""
+    from auth.email_service import send_email, generate_password_reset_token
+    
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not target_user.email:
+        raise HTTPException(status_code=400, detail="User does not have an email address configured")
+    
+    # Generate reset token
+    token = generate_password_reset_token(target_user.id, target_user.email)
+    
+    # Send email
+    result = send_email(
+        to_email=target_user.email,
+        subject="Proxmox LoadBalancer - Password Reset Request",
+        email_type="password_reset",
+        body_html=f"""
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; padding: 30px; border-radius: 12px;">
+            <h2 style="color: #06b6d4; margin-bottom: 20px;">Password Reset Request</h2>
+            <p style="color: #f1f5f9;">Hello {target_user.full_name or target_user.username},</p>
+            <p style="color: #f1f5f9;">An administrator has requested a password reset for your account.</p>
+            <p style="color: #f1f5f9;">Click the button below to set a new password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="/reset-password?token={token}" style="background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+                    Reset Password
+                </a>
+            </div>
+            <p style="color: #f59e0b; font-size: 14px;">⚠️ This link expires in 1 hour.</p>
+            <hr style="border: none; border-top: 1px solid #374151; margin: 20px 0;">
+            <p style="color: #64748b; font-size: 12px;">Powered by Dialogue Dynamics</p>
+        </div>
+        """,
+        body_text=f"Password reset requested. Please visit /reset-password?token={token} to set a new password."
+    )
+    
+    if result.get("success"):
+        return {"success": True, "message": f"Password reset email sent to {target_user.email}"}
+    else:
+        raise HTTPException(status_code=500, detail=result.get("message", "Failed to send email"))

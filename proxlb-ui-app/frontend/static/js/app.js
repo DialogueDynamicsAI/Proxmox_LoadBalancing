@@ -2277,6 +2277,10 @@ async function loadUsers() {
                         <div class="user-detail">
                             <span class="label">Last Login:</span>
                             <span class="value">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</span>
+                        <div class="user-detail">
+                            <span class="label">2FA:</span>
+                            <span class="value ${user.totp_enabled ? 'status-active' : 'status-inactive'}">${user.totp_enabled ? '🔐 Enabled' : '🔓 Disabled'}</span>
+                        </div>
                         </div>
                     </div>
                     <div class="user-card-actions">
@@ -2391,6 +2395,33 @@ async function showEditUserModal(userId) {
                         <option value="false" ${!user.is_active ? 'selected' : ''}>Disabled</option>
                     </select>
                 </div>
+                
+                <!-- Admin Actions Section -->
+                <div class="admin-actions-section">
+                    <h4>🔧 Admin Actions</h4>
+                    
+                    <div class="admin-action-row">
+                        <div class="action-info">
+                            <span class="action-label">Two-Factor Authentication</span>
+                            <span class="action-status ${user.totp_enabled ? 'enabled' : 'disabled'}">
+                                ${user.totp_enabled ? '🔐 Enabled' : '🔓 Disabled'}
+                            </span>
+                        </div>
+                        ${user.totp_enabled ? `<button type="button" class="btn btn-sm btn-warning" onclick="resetUser2FA(${user.id}, '${user.username}')">🔄 Reset 2FA</button>` : '<span class="muted-text">2FA not enabled</span>'}
+                    </div>
+                    
+                    <div class="admin-action-row">
+                        <div class="action-info">
+                            <span class="action-label">Password Management</span>
+                            <span class="action-desc">Generate new password or send reset link</span>
+                        </div>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="resetUserPassword(${user.id}, '${user.username}')">🔑 Generate New</button>
+                            ${user.email ? `<button type="button" class="btn btn-sm btn-primary" onclick="sendPasswordEmail(${user.id}, '${user.username}')">📧 Send Reset Email</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -3005,3 +3036,93 @@ window.loadSettings = async function() {
     }
     await loadEmailLogs();
 };
+
+// ============== Admin User Actions - 2FA & Password Reset ==============
+
+async function resetUser2FA(userId, username) {
+    showToast(`Resetting 2FA for ${username}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/reset-2fa`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to reset 2FA');
+        }
+        
+        const result = await response.json();
+        showToast(result.message, 'success');
+        closeResultsModal();
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to reset 2FA: ${error.message}`, 'error');
+    }
+}
+
+async function resetUserPassword(userId, username) {
+    showToast(`Generating new password for ${username}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/reset-password?send_email_flag=true`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to reset password');
+        }
+        
+        const result = await response.json();
+        
+        // Show the new password in a modal
+        const content = `
+            <div class="password-reset-result">
+                <p>New password has been generated for <strong>${username}</strong>:</p>
+                <div class="new-password-display">
+                    <code id="new-password-value">${result.new_password}</code>
+                    <button class="btn btn-sm btn-secondary" onclick="copyPassword('${result.new_password}')">📋 Copy</button>
+                </div>
+                ${result.email_sent ? '<p class="success-text">✅ Password has been sent to the user\'s email.</p>' : '<p class="warning-text">⚠️ Email not sent (no email configured or SMTP error)</p>'}
+                <p class="warning-text">⚠️ Please share this password securely with the user.</p>
+            </div>
+        `;
+        
+        showResultsModal('Password Reset Complete', 'success', '', content);
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to reset password: ${error.message}`, 'error');
+    }
+}
+
+async function sendPasswordEmail(userId, username) {
+    showToast(`Sending password reset email for ${username}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/send-password`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to send email');
+        }
+        
+        const result = await response.json();
+        showToast(result.message, 'success');
+    } catch (error) {
+        showToast(`Failed to send email: ${error.message}`, 'error');
+    }
+}
+
+function copyPassword(password) {
+    navigator.clipboard.writeText(password).then(() => {
+        showToast('Password copied to clipboard', 'success');
+    }).catch(() => {
+        showToast('Failed to copy password', 'error');
+    });
+}
