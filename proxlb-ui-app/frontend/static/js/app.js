@@ -2621,37 +2621,48 @@ async function saveProfile(event) {
 }
 
 function showChangePasswordModal() {
+    toggleUserMenu();
     const content = `
-        <form id="change-password-form" onsubmit="changePassword(event)">
+        <div id="change-password-form">
             <div class="form-group">
                 <label class="form-label">Current Password</label>
-                <input type="password" class="form-input" name="current_password" required>
+                <input type="password" class="form-input" id="cp-current-password" required>
             </div>
             <div class="form-group">
                 <label class="form-label">New Password</label>
-                <input type="password" class="form-input" name="new_password" required minlength="6">
+                <input type="password" class="form-input" id="cp-new-password" required minlength="6">
             </div>
             <div class="form-group">
                 <label class="form-label">Confirm New Password</label>
-                <input type="password" class="form-input" name="confirm_password" required>
+                <input type="password" class="form-input" id="cp-confirm-password" required>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Change Password</button>
+                <button type="button" class="btn btn-primary" onclick="submitChangePassword()">Change Password</button>
             </div>
-        </form>
+        </div>
     `;
     
     showResultsModal('Change Password', 'info', '', content);
 }
 
-async function changePassword(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
+async function submitChangePassword() {
+    const currentPassword = document.getElementById('cp-current-password').value;
+    const newPassword = document.getElementById('cp-new-password').value;
+    const confirmPassword = document.getElementById('cp-confirm-password').value;
     
-    if (formData.get('new_password') !== formData.get('confirm_password')) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
         showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
         return;
     }
     
@@ -2660,8 +2671,8 @@ async function changePassword(event) {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
-                current_password: formData.get('current_password'),
-                new_password: formData.get('new_password')
+                current_password: currentPassword,
+                new_password: newPassword
             })
         });
         
@@ -3194,66 +3205,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-function showChangePasswordModal() {
-    toggleUserMenu();
-    const content = `
-        <form id="change-password-form" onsubmit="changePassword(event)">
-            <div class="form-group">
-                <label class="form-label">Current Password</label>
-                <input type="password" class="form-input" name="current_password" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">New Password</label>
-                <input type="password" class="form-input" name="new_password" required minlength="6">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Confirm New Password</label>
-                <input type="password" class="form-input" name="confirm_password" required minlength="6">
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Change Password</button>
-            </div>
-        </form>
-    `;
-    showResultsModal('Change Password', 'info', '', content);
-}
-
-async function changePassword(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    
-    const currentPassword = formData.get('current_password');
-    const newPassword = formData.get('new_password');
-    const confirmPassword = formData.get('confirm_password');
-    
-    if (newPassword !== confirmPassword) {
-        showToast('New passwords do not match', 'error');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/auth/change-password', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                current_password: currentPassword,
-                new_password: newPassword
-            })
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to change password');
-        }
-        
-        closeResultsModal();
-        showToast('Password changed successfully', 'success');
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
-}
+// Duplicate showChangePasswordModal and changePassword removed - use submitChangePassword instead
 
 function show2FASetupModal() {
     toggleUserMenu();
