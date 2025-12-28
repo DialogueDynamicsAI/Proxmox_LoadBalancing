@@ -1,0 +1,38 @@
+# ProxLB Web Interface - Docker Compose Configuration
+
+version: '3.8'
+
+services:
+  proxlb-ui:
+    build: .
+    image: proxlb-ui:latest
+    container_name: proxlb-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # ProxLB configuration file
+      - /etc/proxlb/proxlb.yaml:/etc/proxlb/proxlb.yaml:ro
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PROXLB_CONFIG=/etc/proxlb/proxlb.yaml
+      - PROXLB_CONTAINER=proxlb
+    depends_on:
+      - proxlb
+    networks:
+      - proxlb-net
+
+  proxlb:
+    image: cr.gyptazy.com/proxlb/proxlb:latest
+    container_name: proxlb
+    restart: unless-stopped
+    volumes:
+      - /etc/proxlb/proxlb.yaml:/etc/proxlb/proxlb.yaml:ro
+    networks:
+      - proxlb-net
+
+networks:
+  proxlb-net:
+    driver: bridge
+

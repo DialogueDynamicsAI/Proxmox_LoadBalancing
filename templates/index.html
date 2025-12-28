@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProxLB - Load Balancer Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">⚖️</span>
+                    <span class="logo-text">ProxLB</span>
+                </div>
+                <span class="version">v1.1.10</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="nodes">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-label">Nodes</span>
+                </a>
+                <a href="#" class="nav-item" data-page="guests">
+                    <span class="nav-icon">💻</span>
+                    <span class="nav-label">Guests</span>
+                </a>
+                <a href="#" class="nav-item" data-page="balancing">
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-label">Balancing</span>
+                </a>
+                <a href="#" class="nav-item" data-page="rules">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">Rules</span>
+                </a>
+                <a href="#" class="nav-item" data-page="logs">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-label">Logs</span>
+                </a>
+                <a href="#" class="nav-item" data-page="config">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Config</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="service-status" id="service-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Checking...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <section class="page active" id="page-dashboard">
+                <header class="page-header">
+                    <h1>Cluster Dashboard</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="triggerRebalance()">
+                            <span>⚡</span> Rebalance Now
+                        </button>
+                    </div>
+                </header>
+
+                <div class="dashboard-grid">
+                    <!-- Cluster Status Card -->
+                    <div class="card cluster-status-card">
+                        <div class="card-header">
+                            <h3>Cluster Status</h3>
+                            <span class="cluster-name" id="cluster-name">Loading...</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-grid">
+                                <div class="status-item">
+                                    <span class="status-value" id="node-count">-</span>
+                                    <span class="status-label">Nodes</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-value" id="vm-count">-</span>
+                                    <span class="status-label">VMs</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-value" id="ct-count">-</span>
+                                    <span class="status-label">Containers</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resource Gauges -->
+                    <div class="card resource-card">
+                        <div class="card-header">
+                            <h3>Cluster Resources</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="gauge-grid">
+                                <div class="gauge-item">
+                                    <div class="gauge" id="cpu-gauge">
+                                        <svg viewBox="0 0 100 50">
+                                            <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                            <path class="gauge-fill" id="cpu-gauge-fill" d="M10,50 A40,40 0 0,1 90,50"/>
+                                        </svg>
+                                        <div class="gauge-value" id="cpu-value">-%</div>
+                                    </div>
+                                    <span class="gauge-label">CPU</span>
+                                </div>
+                                <div class="gauge-item">
+                                    <div class="gauge" id="mem-gauge">
+                                        <svg viewBox="0 0 100 50">
+                                            <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                            <path class="gauge-fill" id="mem-gauge-fill" d="M10,50 A40,40 0 0,1 90,50"/>
+                                        </svg>
+                                        <div class="gauge-value" id="mem-value">-%</div>
+                                    </div>
+                                    <span class="gauge-label">Memory</span>
+                                </div>
+                                <div class="gauge-item">
+                                    <div class="gauge" id="disk-gauge">
+                                        <svg viewBox="0 0 100 50">
+                                            <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                            <path class="gauge-fill" id="disk-gauge-fill" d="M10,50 A40,40 0 0,1 90,50"/>
+                                        </svg>
+                                        <div class="gauge-value" id="disk-value">-%</div>
+                                    </div>
+                                    <span class="gauge-label">Disk</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Run Card -->
+                    <div class="card next-run-card">
+                        <div class="card-header">
+                            <h3>ProxLB Status</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="next-run-info">
+                                <div class="next-run-timer">
+                                    <span class="timer-label">Next Rebalance</span>
+                                    <span class="timer-value" id="next-run-timer">--:--</span>
+                                </div>
+                                <div class="balancing-info">
+                                    <span class="info-item">
+                                        <span class="info-label">Method:</span>
+                                        <span class="info-value" id="balance-method">-</span>
+                                    </span>
+                                    <span class="info-item">
+                                        <span class="info-label">Mode:</span>
+                                        <span class="info-value" id="balance-mode">-</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nodes Overview -->
+                    <div class="card nodes-overview-card">
+                        <div class="card-header">
+                            <h3>Nodes Overview</h3>
+                            <a href="#" class="card-link" data-page="nodes">View All →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="nodes-grid" id="nodes-grid">
+                                <!-- Nodes will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Migrations -->
+                    <div class="card migrations-card">
+                        <div class="card-header">
+                            <h3>Recent Migrations</h3>
+                            <a href="#" class="card-link" data-page="logs">View Logs →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="migration-list" id="migration-list">
+                                <!-- Migrations will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Nodes Page -->
+            <section class="page" id="page-nodes">
+                <header class="page-header">
+                    <h1>Cluster Nodes</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="refreshNodes()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                </header>
+
+                <div class="nodes-container" id="nodes-container">
+                    <!-- Node cards will be populated here -->
+                </div>
+            </section>
+
+            <!-- Guests Page -->
+            <section class="page" id="page-guests">
+                <header class="page-header">
+                    <h1>Virtual Machines & Containers</h1>
+                    <div class="header-actions">
+                        <input type="text" class="search-input" id="guest-search" placeholder="Search guests...">
+                        <select class="filter-select" id="guest-filter">
+                            <option value="all">All Types</option>
+                            <option value="qemu">VMs Only</option>
+                            <option value="lxc">Containers Only</option>
+                        </select>
+                    </div>
+                </header>
+
+                <div class="table-container">
+                    <table class="data-table" id="guests-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Node</th>
+                                <th>Status</th>
+                                <th>CPU</th>
+                                <th>Memory</th>
+                                <th>Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guests-tbody">
+                            <!-- Guests will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Balancing Page -->
+            <section class="page" id="page-balancing">
+                <header class="page-header">
+                    <h1>Balancing Control</h1>
+                </header>
+
+                <div class="balancing-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Balancing Settings</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="balancing-form" class="settings-form">
+                                <div class="form-group">
+                                    <label>Balancing Enabled</label>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="balancing-enabled" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="balance-method-select">Method</label>
+                                    <select id="balance-method-select">
+                                        <option value="memory">Memory</option>
+                                        <option value="cpu">CPU</option>
+                                        <option value="disk">Disk</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="balance-mode-select">Mode</label>
+                                    <select id="balance-mode-select">
+                                        <option value="used">Used Resources</option>
+                                        <option value="assigned">Assigned Resources</option>
+                                        <option value="psi">PSI (Pressure)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="balanciness-input">Balanciness Threshold (%)</label>
+                                    <input type="range" id="balanciness-input" min="1" max="50" value="5">
+                                    <span class="range-value" id="balanciness-value">5%</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="memory-threshold-input">Memory Threshold (%)</label>
+                                    <input type="range" id="memory-threshold-input" min="50" max="100" value="75">
+                                    <span class="range-value" id="memory-threshold-value">75%</span>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Settings</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Manual Actions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="action-buttons">
+                                <button class="btn btn-primary btn-large" onclick="triggerRebalance()">
+                                    <span class="btn-icon">⚡</span>
+                                    <span class="btn-text">Trigger Rebalance</span>
+                                </button>
+                                <button class="btn btn-secondary btn-large" onclick="triggerDryRun()">
+                                    <span class="btn-icon">🔍</span>
+                                    <span class="btn-text">Dry Run (Simulate)</span>
+                                </button>
+                                <button class="btn btn-secondary btn-large" onclick="getBestNode()">
+                                    <span class="btn-icon">🎯</span>
+                                    <span class="btn-text">Get Best Node</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Service Control</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="service-control">
+                                <div class="service-status-large" id="service-status-large">
+                                    <span class="status-dot"></span>
+                                    <span class="status-text">Checking...</span>
+                                </div>
+                                <div class="action-buttons">
+                                    <button class="btn btn-success" onclick="startService()">Start</button>
+                                    <button class="btn btn-warning" onclick="restartService()">Restart</button>
+                                    <button class="btn btn-danger" onclick="stopService()">Stop</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rules Page -->
+            <section class="page" id="page-rules">
+                <header class="page-header">
+                    <h1>Rules & Policies</h1>
+                </header>
+
+                <div class="rules-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔗 Affinity Groups</h3>
+                            <span class="badge" id="affinity-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="rules-list" id="affinity-list">
+                                <p class="empty-state">No affinity groups defined</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔀 Anti-Affinity Groups</h3>
+                            <span class="badge" id="anti-affinity-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="rules-list" id="anti-affinity-list">
+                                <p class="empty-state">No anti-affinity groups defined</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📌 Pinned VMs</h3>
+                            <span class="badge" id="pinned-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="rules-list" id="pinned-list">
+                                <p class="empty-state">No pinned VMs</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🚫 Ignored VMs</h3>
+                            <span class="badge" id="ignored-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="rules-list" id="ignored-list">
+                                <p class="empty-state">No ignored VMs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs Page -->
+            <section class="page" id="page-logs">
+                <header class="page-header">
+                    <h1>Logs</h1>
+                    <div class="header-actions">
+                        <select class="filter-select" id="log-level-filter">
+                            <option value="">All Levels</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                            <option value="DEBUG">DEBUG</option>
+                        </select>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="auto-scroll" checked>
+                            Auto-scroll
+                        </label>
+                        <button class="btn btn-secondary" onclick="refreshLogs()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                </header>
+
+                <div class="log-container">
+                    <pre class="log-viewer" id="log-viewer">Loading logs...</pre>
+                </div>
+            </section>
+
+            <!-- Config Page -->
+            <section class="page" id="page-config">
+                <header class="page-header">
+                    <h1>Configuration</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="saveConfig()">
+                            <span>💾</span> Save & Restart
+                        </button>
+                    </div>
+                </header>
+
+                <div class="config-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>ProxLB Configuration (proxlb.yaml)</h3>
+                        </div>
+                        <div class="card-body">
+                            <textarea class="config-editor" id="config-editor" spellcheck="false">Loading configuration...</textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Confirm Action</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modal-confirm-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
