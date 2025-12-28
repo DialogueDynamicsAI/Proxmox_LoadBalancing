@@ -1,53 +1,41 @@
-# ProxLB Web Interface - Dockerfile
-# Multi-stage build for optimized image
+# Use the latest Alpine image
+FROM alpine:latest
 
-FROM python:3.11-slim as builder
+# Labels
+LABEL maintainer="gyptazy@gyptazy.com"
+LABEL org.label-schema.name="ProxLB"
+LABEL org.label-schema.description="ProxLB - An advanced load balancer for Proxmox clusters."
+LABEL org.label-schema.vendor="gyptazy"
+LABEL org.label-schema.url="https://proxlb.de"
+LABEL org.label-schema.vcs-url="https://github.com/gyptazy/ProxLB"
+
+# --- Step 1 (root): system deps, user, dirs ---
+RUN apk add --no-cache python3 py3-pip \
+  && addgroup -S plb \
+  && adduser -S -G plb -h /home/plb plb \
+  && mkdir -p /app/conf /opt/venv \
+  && chown -R plb:plb /app /home/plb /opt/venv
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Copy only requirements first for better layer caching
+COPY --chown=plb:plb requirements.txt /app/requirements.txt
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# --- Step 2 (appuser): venv + deps + code ---
+USER plb
 
-# Production stage
-FROM python:3.11-slim
+# Create venv owned by appuser and put it on PATH
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
 
-WORKDIR /app
+# Install Python dependencies into the venv (no PEP 668 issues)
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Install runtime dependencies (for docker CLI)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    docker.io \
-    && rm -rf /var/lib/apt/lists/*
+# Copy application code (owned by appuser)
+COPY --chown=plb:plb proxlb /app/proxlb
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Optional: placeholder config so a bind-mount can override cleanly
+RUN touch /app/conf/proxlb.yaml
 
-# Copy application code
-COPY backend/ ./backend/
-COPY frontend/ ./frontend/
-COPY templates/ ./templates/
-
-# Set working directory to backend
-WORKDIR /app/backend
-
-# Environment variables
-ENV PROXLB_CONFIG=/etc/proxlb/proxlb.yaml
-ENV PROXLB_CONTAINER=proxlb
-ENV PYTHONUNBUFFERED=1
-
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/status')" || exit 1
-
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-
+# Run as non-root using venv Python
+ENTRYPOINT ["/opt/venv/bin/python", "/app/proxlb/main.py"]
