@@ -720,55 +720,97 @@ async function toggleMaintenance(nodeName, enable) {
     showMaintenanceModal(nodeName, enable);
 }
 
-function showMaintenanceModal(nodeName, currentlyInMaintenance) {
-    const title = 'Maintenance Mode Options';
-    const content = `
-        <div class="maintenance-options">
-            <div class="maintenance-option-card proxlb">
-                <div class="maintenance-option-header">
-                    <span class="maintenance-icon">⚖️</span>
-                    <h4>ProxLB Maintenance</h4>
+function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
+    // Show loading state while fetching HA status
+    showResultsModal('Maintenance Mode', 'loading', `Loading status for node: ${nodeName}`, '');
+    
+    // Fetch the actual maintenance status for both types
+    apiGet('/nodes/maintenance-status').then(data => {
+        const nodeStatus = data.nodes?.find(n => n.node === nodeName) || {};
+        const inProxLBMaint = nodeStatus.proxlb_maintenance || false;
+        const inHAMaint = nodeStatus.proxmox_ha_maintenance || false;
+        
+        const content = `
+            <div class="maintenance-options-compact">
+                <div class="maintenance-option-card proxlb ${inProxLBMaint ? 'active' : ''}">
+                    <div class="maintenance-option-header">
+                        <span class="maintenance-icon">⚖️</span>
+                        <h4>ProxLB Maintenance</h4>
+                        ${inProxLBMaint ? '<span class="status-badge active">ACTIVE</span>' : ''}
+                    </div>
+                    <p class="maintenance-description">
+                        Excludes node from ProxLB balancing. VMs migrate on next rebalance.
+                    </p>
+                    <div class="maintenance-features-compact">
+                        <span>✓ Balancing only</span>
+                        <span>✓ Node operational</span>
+                    </div>
+                    <button class="btn ${inProxLBMaint ? 'btn-success' : 'btn-warning'} btn-full" 
+                            onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!inProxLBMaint})">
+                        ${inProxLBMaint ? '✓ Exit ProxLB Maintenance' : '⚖️ Enter ProxLB Maintenance'}
+                    </button>
                 </div>
-                <p class="maintenance-description">
-                    Excludes this node from ProxLB load balancing decisions. VMs will be migrated to other nodes during the next rebalance cycle.
-                </p>
-                <ul class="maintenance-features">
-                    <li>✓ Affects ProxLB balancing only</li>
-                    <li>✓ VMs migrate on next rebalance</li>
-                    <li>✓ Node stays fully operational</li>
-                </ul>
-                <button class="btn btn-warning btn-full" 
-                        onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!currentlyInMaintenance})">
-                    ${currentlyInMaintenance ? '✓ Exit ProxLB Maintenance' : '🔧 Enter ProxLB Maintenance'}
-                </button>
-            </div>
-            
-            <div class="maintenance-option-card proxmox">
-                <div class="maintenance-option-header">
-                    <span class="maintenance-icon">🔒</span>
-                    <h4>Proxmox HA Maintenance</h4>
+                
+                <div class="maintenance-option-card proxmox ${inHAMaint ? 'active' : ''}">
+                    <div class="maintenance-option-header">
+                        <span class="maintenance-icon">🔒</span>
+                        <h4>Proxmox HA</h4>
+                        ${inHAMaint ? '<span class="status-badge active">ACTIVE</span>' : ''}
+                    </div>
+                    <p class="maintenance-description">
+                        Real Proxmox HA maintenance. HA VMs migrate immediately.
+                    </p>
+                    <div class="maintenance-features-compact">
+                        <span>✓ Cluster-level</span>
+                        <span>⚠️ Requires HA</span>
+                    </div>
+                    <button class="btn ${inHAMaint ? 'btn-success' : 'btn-danger'} btn-full" 
+                            onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', ${!inHAMaint})">
+                        ${inHAMaint ? '✓ Exit Proxmox HA Maintenance' : '🔒 Enter Proxmox HA Maintenance'}
+                    </button>
                 </div>
-                <p class="maintenance-description">
-                    Puts the node into real Proxmox HA maintenance mode. All HA-managed VMs are immediately migrated to other nodes.
-                </p>
-                <ul class="maintenance-features">
-                    <li>✓ Real Proxmox cluster maintenance</li>
-                    <li>✓ HA VMs migrate immediately</li>
-                    <li>✓ Prevents new VM placement</li>
-                    <li>⚠️ Requires HA to be configured</li>
-                </ul>
-                <button class="btn btn-danger btn-full" 
-                        onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', true)">
-                    🔒 Enter Proxmox HA Maintenance
-                </button>
-                <button class="btn btn-success btn-full mt-1" 
-                        onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', false)">
-                    ✓ Exit Proxmox HA Maintenance
-                </button>
             </div>
-        </div>
-    `;
-    showResultsModal(title, 'info', `Select maintenance mode for node: ${nodeName}`, content);
+        `;
+        updateResultsModal('info', `Node: ${nodeName}`, content);
+    }).catch(error => {
+        // Fallback if we can't fetch status
+        const content = `
+            <div class="maintenance-options-compact">
+                <div class="maintenance-option-card proxlb">
+                    <div class="maintenance-option-header">
+                        <span class="maintenance-icon">⚖️</span>
+                        <h4>ProxLB Maintenance</h4>
+                    </div>
+                    <p class="maintenance-description">
+                        Excludes node from ProxLB balancing. VMs migrate on next rebalance.
+                    </p>
+                    <button class="btn ${currentlyInProxLBMaintenance ? 'btn-success' : 'btn-warning'} btn-full" 
+                            onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!currentlyInProxLBMaintenance})">
+                        ${currentlyInProxLBMaintenance ? '✓ Exit ProxLB Maintenance' : '⚖️ Enter ProxLB Maintenance'}
+                    </button>
+                </div>
+                
+                <div class="maintenance-option-card proxmox">
+                    <div class="maintenance-option-header">
+                        <span class="maintenance-icon">🔒</span>
+                        <h4>Proxmox HA</h4>
+                    </div>
+                    <p class="maintenance-description">
+                        Real Proxmox HA maintenance. HA VMs migrate immediately.
+                    </p>
+                    <div class="maintenance-btn-group">
+                        <button class="btn btn-danger" onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', true)">
+                            🔒 Enter
+                        </button>
+                        <button class="btn btn-success" onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', false)">
+                            ✓ Exit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        updateResultsModal('info', `Node: ${nodeName}`, content);
+    });
 }
 
 async function toggleProxLBMaintenance(nodeName, enable) {

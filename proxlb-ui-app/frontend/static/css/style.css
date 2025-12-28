@@ -2686,3 +2686,91 @@ tr.running td {
     background: rgba(239, 68, 68, 0.2);
     color: var(--accent-danger);
 }
+
+/* Compact Maintenance Modal Styles */
+.maintenance-options-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .maintenance-options-compact {
+        grid-template-columns: 1fr;
+    }
+}
+
+.maintenance-option-card.active {
+    border-width: 2px;
+}
+
+.maintenance-option-card.proxlb.active {
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.maintenance-option-card.proxmox.active {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.status-badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: auto;
+}
+
+.status-badge.active {
+    background: var(--accent-success);
+    color: #fff;
+}
+
+.maintenance-features-compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.maintenance-features-compact span {
+    background: var(--bg-primary);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+}
+
+.maintenance-btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.maintenance-btn-group .btn {
+    flex: 1;
+}
+
+.maintenance-option-card .maintenance-description {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+.maintenance-option-card .maintenance-option-header {
+    margin-bottom: 0.5rem;
+}
+
+.maintenance-option-card .maintenance-option-header h4 {
+    font-size: 1rem;
+}
+
+.maintenance-option-card .maintenance-icon {
+    font-size: 1.2rem;
+}
+
+/* Smaller padding for compact cards */
+.maintenance-options-compact .maintenance-option-card {
+    padding: 1rem;
+}
