@@ -135,7 +135,9 @@ function initForms() {
 
 async function apiGet(endpoint) {
     try {
-        const response = await fetch(`${API_BASE}${endpoint}`);
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            headers: getAuthHeaders()
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
     } catch (error) {
@@ -148,7 +150,7 @@ async function apiPost(endpoint, data = {}) {
     try {
         const response = await fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify(data)
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
