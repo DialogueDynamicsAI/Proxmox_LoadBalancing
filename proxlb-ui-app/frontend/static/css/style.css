@@ -2501,3 +2501,188 @@ tr.running td {
     color: var(--accent-success);
     font-weight: bold;
 }
+
+/* ============== Dual Maintenance Mode Styles ============== */
+
+.maintenance-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .maintenance-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+.maintenance-option-card {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    transition: border-color 0.3s ease, transform 0.2s ease;
+}
+
+.maintenance-option-card:hover {
+    transform: translateY(-2px);
+}
+
+.maintenance-option-card.proxlb {
+    border-color: var(--accent-warning);
+}
+
+.maintenance-option-card.proxlb:hover {
+    border-color: var(--accent-warning);
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+}
+
+.maintenance-option-card.proxmox {
+    border-color: var(--accent-danger);
+}
+
+.maintenance-option-card.proxmox:hover {
+    border-color: var(--accent-danger);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+.maintenance-option-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.maintenance-option-header .maintenance-icon {
+    font-size: 1.5rem;
+}
+
+.maintenance-option-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.maintenance-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.maintenance-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+}
+
+.maintenance-features li {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+}
+
+.btn-full {
+    width: 100%;
+    justify-content: center;
+}
+
+.mt-1 {
+    margin-top: 0.5rem;
+}
+
+/* Maintenance Result Styles */
+.maintenance-result {
+    padding: 1rem;
+}
+
+.maintenance-type-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.maintenance-type-badge.proxlb {
+    background: rgba(255, 193, 7, 0.2);
+    color: var(--accent-warning);
+    border: 1px solid var(--accent-warning);
+}
+
+.maintenance-type-badge.proxmox {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-danger);
+    border: 1px solid var(--accent-danger);
+}
+
+.maintenance-error {
+    padding: 1rem;
+}
+
+.manual-command-box {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.manual-command-box h5 {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.manual-command-box code {
+    display: block;
+    background: var(--bg-secondary);
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+}
+
+.manual-command-box .btn-sm {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Node card status indicator for HA maintenance */
+.node-status.ha-maintenance {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-danger);
+}
+
+.node-card-large.ha-maintenance {
+    border-left: 4px solid var(--accent-danger);
+}
+
+/* Maintenance status badges in node list */
+.maintenance-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.maintenance-mini-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.maintenance-mini-badge.proxlb {
+    background: rgba(255, 193, 7, 0.2);
+    color: var(--accent-warning);
+}
+
+.maintenance-mini-badge.proxmox-ha {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-danger);
+}

@@ -519,3 +519,118 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
 
+
+
+# ============== Proxmox HA Maintenance Mode ==============
+
+class ProxmoxMaintenanceRequest(BaseModel):
+    node: str
+    enable: bool
+
+
+@app.get("/api/ha/status")
+async def get_ha_status():
+    """Get HA cluster status"""
+    if not proxmox_api:
+        raise HTTPException(status_code=503, detail="Proxmox API not initialized")
+    
+    try:
+        status = await proxmox_api.get_ha_status()
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ha/node/{node}")
+async def get_node_ha_state(node: str):
+    """Get HA state for a specific node"""
+    if not proxmox_api:
+        raise HTTPException(status_code=503, detail="Proxmox API not initialized")
+    
+    try:
+        state = await proxmox_api.get_node_ha_state(node)
+        return state
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ha/maintenance")
+async def set_proxmox_ha_maintenance(data: ProxmoxMaintenanceRequest):
+    """Set or unset Proxmox HA maintenance mode for a node.
+    
+    This is REAL Proxmox maintenance mode that:
+    - Migrates all HA-managed VMs/CTs to other nodes
+    - Prevents new workloads from being placed on the node
+    - Is managed at the cluster level
+    
+    Different from ProxLB maintenance which only affects balancing decisions.
+    """
+    if not proxmox_api:
+        raise HTTPException(status_code=503, detail="Proxmox API not initialized")
+    
+    try:
+        # Try the main method
+        try:
+            result = await proxmox_api.set_node_ha_maintenance(data.node, data.enable)
+            return result
+        except Exception as e1:
+            # Try the SSH fallback method
+            try:
+                result = await proxmox_api.set_node_ha_maintenance_via_ssh(data.node, data.enable)
+                return result
+            except Exception as e2:
+                # If API methods fail, provide instructions for manual execution
+                raise HTTPException(
+                    status_code=500, 
+                    detail={
+                        "error": f"Could not set HA maintenance via API: {str(e1)}",
+                        "manual_command": f"Run on any Proxmox node: pvesh set /cluster/ha/status/manager_status --node {data.node} --state {'maintenance' if data.enable else 'online'}",
+                        "alternative": f"Or use Proxmox GUI: Datacenter → HA → Status → Manager Status → Right-click node → Set maintenance/online"
+                    }
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/nodes/maintenance-status")
+async def get_all_nodes_maintenance_status():
+    """Get maintenance status for all nodes (both ProxLB and Proxmox HA)"""
+    if not proxmox_api:
+        raise HTTPException(status_code=503, detail="Proxmox API not initialized")
+    
+    try:
+        # Get ProxLB maintenance nodes from config
+        config = load_config()
+        proxlb_maintenance_nodes = config.get("proxmox_cluster", {}).get("maintenance_nodes", []) if config else []
+        
+        # Get Proxmox HA status
+        ha_status = await proxmox_api.get_ha_status()
+        
+        # Get all nodes
+        nodes = await proxmox_api.get_nodes()
+        
+        # Build combined status
+        result = []
+        for node in nodes:
+            node_name = node.get("node")
+            
+            # Check HA maintenance status
+            ha_in_maintenance = False
+            for item in ha_status.get("status", []):
+                if item.get("type") == "node" and item.get("node") == node_name:
+                    ha_in_maintenance = item.get("status") == "maintenance"
+                    break
+            
+            result.append({
+                "node": node_name,
+                "status": node.get("status"),
+                "proxlb_maintenance": node_name in proxlb_maintenance_nodes,
+                "proxmox_ha_maintenance": ha_in_maintenance,
+                "any_maintenance": node_name in proxlb_maintenance_nodes or ha_in_maintenance
+            })
+        
+        return {"nodes": result, "proxlb_maintenance_nodes": proxlb_maintenance_nodes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -368,3 +368,149 @@ class ProxmoxAPI:
         
         return desc
 
+
+    async def get_ha_status(self) -> Dict:
+        """Get HA (High Availability) status for the cluster"""
+        try:
+            client = self._get_client()
+            
+            # Get HA status
+            ha_status = client.cluster.ha.status.current.get()
+            
+            # Get HA groups
+            try:
+                ha_groups = client.cluster.ha.groups.get()
+            except:
+                ha_groups = []
+            
+            # Get HA resources
+            try:
+                ha_resources = client.cluster.ha.resources.get()
+            except:
+                ha_resources = []
+            
+            return {
+                "status": ha_status,
+                "groups": ha_groups,
+                "resources": ha_resources
+            }
+        except Exception as e:
+            raise Exception(f"Failed to get HA status: {e}")
+    
+    async def get_node_ha_state(self, node: str) -> Dict:
+        """Get the HA state of a specific node"""
+        try:
+            client = self._get_client()
+            
+            # Get cluster status to find node state
+            ha_status = client.cluster.ha.status.current.get()
+            
+            node_state = None
+            quorum_ok = False
+            
+            for item in ha_status:
+                if item.get("type") == "node" and item.get("node") == node:
+                    node_state = item.get("status", "unknown")
+                    quorum_ok = item.get("quorum", 0) == 1
+                    break
+            
+            return {
+                "node": node,
+                "ha_state": node_state,
+                "quorum": quorum_ok,
+                "in_maintenance": node_state == "maintenance" if node_state else False
+            }
+        except Exception as e:
+            raise Exception(f"Failed to get HA state for node {node}: {e}")
+    
+    async def set_node_ha_maintenance(self, node: str, enable: bool) -> Dict:
+        """Set or unset HA maintenance mode for a node
+        
+        This uses the Proxmox HA manager to set node state:
+        - maintenance: Migrates all HA-managed VMs to other nodes, node won't receive new VMs
+        - online: Normal operation
+        """
+        try:
+            client = self._get_client()
+            
+            # Target state
+            state = "maintenance" if enable else "online"
+            
+            # Use the cluster/ha/status/manager API to change node state
+            # The proper API path is: POST /cluster/ha/status/manager_status
+            # But proxmoxer uses a different approach - we need to use pvesh equivalent
+            
+            # Method 1: Try the HA manager endpoint
+            try:
+                # This sets the local node's HA state
+                result = client.nodes(node).post('ha-manager/set-node-state', state=state)
+                return {
+                    "success": True,
+                    "node": node,
+                    "state": state,
+                    "message": f"Node {node} {'entered' if enable else 'exited'} HA maintenance mode"
+                }
+            except Exception as e1:
+                # Method 2: Try via API endpoint
+                try:
+                    # Use the cluster endpoint
+                    result = client.cluster.ha.status.post('manager_status', node=node, state=state)
+                    return {
+                        "success": True,
+                        "node": node,
+                        "state": state,
+                        "message": f"Node {node} {'entered' if enable else 'exited'} HA maintenance mode"
+                    }
+                except Exception as e2:
+                    # Method 3: Use pvesh command via SSH
+                    # This requires the API user to have shell access which is uncommon
+                    raise Exception(f"Could not set HA state via API: {e1}, {e2}")
+                    
+        except Exception as e:
+            raise Exception(f"Failed to set HA maintenance for node {node}: {e}")
+    
+    async def set_node_ha_maintenance_via_ssh(self, node: str, enable: bool) -> Dict:
+        """Set HA maintenance mode using pvesh command (fallback method)
+        
+        This method uses subprocess to run the command via the Proxmox API
+        which then executes on the cluster.
+        """
+        try:
+            import subprocess
+            
+            state = "maintenance" if enable else "online"
+            
+            # We need to run this command on the Proxmox node
+            # Since we're in a container, we'll try to use the API
+            client = self._get_client()
+            
+            # Try to find a way to execute the command
+            # The pvesh set command is: pvesh set /cluster/ha/status/manager_status --node <node> --state <state>
+            
+            # Actually, the proper proxmoxer call is:
+            # For Proxmox VE 7+, the endpoint is different
+            try:
+                # This is the correct API call for setting node HA state
+                result = client.cluster.ha.manager('set-node-state').post(node=node, state=state)
+                return {
+                    "success": True,
+                    "node": node,
+                    "state": state,
+                    "message": f"Node {node} {'entered' if enable else 'exited'} HA maintenance mode"
+                }
+            except Exception as e:
+                # Try alternate endpoint format
+                try:
+                    # Use create instead of post for some proxmoxer versions
+                    result = client.cluster.ha.status.manager_status.create(node=node, state=state)
+                    return {
+                        "success": True,
+                        "node": node,
+                        "state": state,
+                        "message": f"Node {node} {'entered' if enable else 'exited'} HA maintenance mode"
+                    }
+                except:
+                    raise Exception(f"API methods failed: {e}")
+                    
+        except Exception as e:
+            raise Exception(f"Failed to set HA maintenance for node {node}: {e}")

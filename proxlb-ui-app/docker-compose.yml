@@ -11,8 +11,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # ProxLB configuration file
-      - /etc/proxlb/proxlb.yaml:/etc/proxlb/proxlb.yaml:ro
+      # ProxLB configuration file (read-write for UI to update config)
+      - /etc/proxlb/proxlb.yaml:/etc/proxlb/proxlb.yaml:rw
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared temp directory for one-shot ProxLB runs

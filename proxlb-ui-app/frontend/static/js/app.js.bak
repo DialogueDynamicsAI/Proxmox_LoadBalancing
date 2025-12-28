@@ -716,160 +716,30 @@ function refreshNodes() {
 }
 
 async function toggleMaintenance(nodeName, enable) {
-    // Legacy function - now shows modal with both options
-    showMaintenanceModal(nodeName, enable);
-}
-
-function showMaintenanceModal(nodeName, currentlyInMaintenance) {
-    const title = 'Maintenance Mode Options';
-    const content = `
-        <div class="maintenance-options">
-            <div class="maintenance-option-card proxlb">
-                <div class="maintenance-option-header">
-                    <span class="maintenance-icon">⚖️</span>
-                    <h4>ProxLB Maintenance</h4>
-                </div>
-                <p class="maintenance-description">
-                    Excludes this node from ProxLB load balancing decisions. VMs will be migrated to other nodes during the next rebalance cycle.
-                </p>
-                <ul class="maintenance-features">
-                    <li>✓ Affects ProxLB balancing only</li>
-                    <li>✓ VMs migrate on next rebalance</li>
-                    <li>✓ Node stays fully operational</li>
-                </ul>
-                <button class="btn btn-warning btn-full" 
-                        onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!currentlyInMaintenance})">
-                    ${currentlyInMaintenance ? '✓ Exit ProxLB Maintenance' : '🔧 Enter ProxLB Maintenance'}
-                </button>
-            </div>
-            
-            <div class="maintenance-option-card proxmox">
-                <div class="maintenance-option-header">
-                    <span class="maintenance-icon">🔒</span>
-                    <h4>Proxmox HA Maintenance</h4>
-                </div>
-                <p class="maintenance-description">
-                    Puts the node into real Proxmox HA maintenance mode. All HA-managed VMs are immediately migrated to other nodes.
-                </p>
-                <ul class="maintenance-features">
-                    <li>✓ Real Proxmox cluster maintenance</li>
-                    <li>✓ HA VMs migrate immediately</li>
-                    <li>✓ Prevents new VM placement</li>
-                    <li>⚠️ Requires HA to be configured</li>
-                </ul>
-                <button class="btn btn-danger btn-full" 
-                        onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', true)">
-                    🔒 Enter Proxmox HA Maintenance
-                </button>
-                <button class="btn btn-success btn-full mt-1" 
-                        onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', false)">
-                    ✓ Exit Proxmox HA Maintenance
-                </button>
-            </div>
-        </div>
-    `;
-    showResultsModal(title, 'info', `Select maintenance mode for node: ${nodeName}`, content);
-}
-
-async function toggleProxLBMaintenance(nodeName, enable) {
     const action = enable ? 'add' : 'remove';
-    const title = enable ? 'Enter ProxLB Maintenance' : 'Exit ProxLB Maintenance';
+    const title = enable ? 'Enter Maintenance Mode' : 'Exit Maintenance Mode';
     
-    showResultsModal(title, 'loading', `${enable ? 'Entering' : 'Exiting'} ProxLB maintenance mode for ${nodeName}...`);
+    showResultsModal(title, 'loading', `${enable ? 'Entering' : 'Exiting'} maintenance mode for ${nodeName}...`);
     
     try {
         const result = await apiPost('/maintenance', { node: nodeName, action });
         
         if (result.success) {
             const content = `
-                <div class="maintenance-result">
-                    <div class="maintenance-type-badge proxlb">⚖️ ProxLB Maintenance</div>
-                    <div class="log-line">Node: <strong>${nodeName}</strong></div>
-                    <div class="log-line">Action: ${enable ? 'Added to' : 'Removed from'} ProxLB maintenance</div>
-                    <div class="log-line">Current ProxLB maintenance nodes: ${(result.maintenance_nodes || []).join(', ') || 'None'}</div>
-                    ${enable ? '<div class="log-line info">ℹ️ VMs on this node will be migrated during next ProxLB rebalance</div>' : ''}
-                </div>
+                <div class="log-line">Node: <strong>${nodeName}</strong></div>
+                <div class="log-line">Action: ${enable ? 'Added to' : 'Removed from'} maintenance mode</div>
+                <div class="log-line">Current maintenance nodes: ${(result.maintenance_nodes || []).join(', ') || 'None'}</div>
+                ${enable ? '<div class="log-line warning">⚠️ VMs on this node will be migrated during next rebalance</div>' : ''}
             `;
-            updateResultsModal('success', `Node ${nodeName} ${enable ? 'entered' : 'exited'} ProxLB maintenance`, content);
+            updateResultsModal('success', `Node ${nodeName} ${enable ? 'entered' : 'exited'} maintenance mode`, content);
             loadNodes();
             loadDashboard();
         } else {
-            updateResultsModal('error', 'Failed to update ProxLB maintenance mode', `<pre>${result.error || 'Unknown error'}</pre>`);
+            updateResultsModal('error', 'Failed to update maintenance mode', `<pre>${result.error || 'Unknown error'}</pre>`);
         }
     } catch (error) {
-        updateResultsModal('error', 'Failed to update ProxLB maintenance mode', `<pre>${error.message || 'Request failed'}</pre>`);
+        updateResultsModal('error', 'Failed to update maintenance mode', `<pre>${error.message || 'Request failed'}</pre>`);
     }
-}
-
-async function toggleProxmoxHAMaintenance(nodeName, enable) {
-    const title = enable ? 'Enter Proxmox HA Maintenance' : 'Exit Proxmox HA Maintenance';
-    
-    showResultsModal(title, 'loading', `${enable ? 'Entering' : 'Exiting'} Proxmox HA maintenance mode for ${nodeName}...`);
-    
-    try {
-        const result = await apiPost('/ha/maintenance', { node: nodeName, enable: enable });
-        
-        if (result.success) {
-            const content = `
-                <div class="maintenance-result">
-                    <div class="maintenance-type-badge proxmox">🔒 Proxmox HA Maintenance</div>
-                    <div class="log-line">Node: <strong>${nodeName}</strong></div>
-                    <div class="log-line">State: <strong>${enable ? 'MAINTENANCE' : 'ONLINE'}</strong></div>
-                    <div class="log-line">${result.message || (enable ? 'Node entered HA maintenance mode' : 'Node is back online')}</div>
-                    ${enable ? '<div class="log-line warning">⚠️ All HA-managed VMs are being migrated to other nodes</div>' : '<div class="log-line success">✓ Node is now available for workloads</div>'}
-                </div>
-            `;
-            updateResultsModal('success', `Node ${nodeName} ${enable ? 'entered' : 'exited'} Proxmox HA maintenance`, content);
-            loadNodes();
-            loadDashboard();
-        } else {
-            // Handle the manual command case
-            let content = `<pre>${escapeHtml(JSON.stringify(result.detail || result.error || result, null, 2))}</pre>`;
-            if (result.detail && result.detail.manual_command) {
-                content = `
-                    <div class="maintenance-error">
-                        <div class="log-line error">Could not set HA maintenance via API.</div>
-                        <div class="log-line">This may be due to API permissions or cluster configuration.</div>
-                        <div class="manual-command-box">
-                            <h5>📋 Manual Command (run on any Proxmox node):</h5>
-                            <code>${escapeHtml(result.detail.manual_command)}</code>
-                            <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('${escapeHtml(result.detail.manual_command)}')">📋 Copy</button>
-                        </div>
-                        <div class="log-line muted">${escapeHtml(result.detail.alternative || '')}</div>
-                    </div>
-                `;
-            }
-            updateResultsModal('error', 'Failed to set Proxmox HA maintenance', content);
-        }
-    } catch (error) {
-        let errorContent = `<pre>${escapeHtml(error.message || 'Request failed')}</pre>`;
-        try {
-            if (error.response) {
-                const errorData = await error.response.json();
-                if (errorData.detail && errorData.detail.manual_command) {
-                    errorContent = `
-                        <div class="maintenance-error">
-                            <div class="log-line error">Could not set HA maintenance via API.</div>
-                            <div class="manual-command-box">
-                                <h5>📋 Manual Command (run on Proxmox node):</h5>
-                                <code>${escapeHtml(errorData.detail.manual_command)}</code>
-                            </div>
-                            <div class="log-line muted">${escapeHtml(errorData.detail.alternative || '')}</div>
-                        </div>
-                    `;
-                }
-            }
-        } catch (e) {}
-        updateResultsModal('error', 'Failed to set Proxmox HA maintenance', errorContent);
-    }
-}
-
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('Command copied to clipboard', 'success');
-    }).catch(() => {
-        showToast('Failed to copy', 'error');
-    });
 }
 
 // ============== Guests Page ==============
@@ -1303,7 +1173,7 @@ async function getBestNode() {
 }
 
 // Results Modal Functions
-function showResultsModal(title, status, message, details = '') {
+function showResultsModal(title, status, content) {
     const modal = document.getElementById('results-modal');
     const titleEl = document.getElementById('results-modal-title');
     const statusEl = document.getElementById('results-modal-status');
@@ -1315,14 +1185,11 @@ function showResultsModal(title, status, message, details = '') {
     statusEl.className = `results-status ${status}`;
     
     if (status === 'loading') {
-        statusEl.innerHTML = `<span class="spinner"></span> ${message}`;
-        contentEl.innerHTML = details;
-    } else if (status === 'info') {
-        statusEl.innerHTML = `<span>ℹ️</span> ${message}`;
-        contentEl.innerHTML = details;
+        statusEl.innerHTML = `<span class="spinner"></span> ${content}`;
+        contentEl.innerHTML = '';
     } else {
-        statusEl.textContent = message;
-        contentEl.innerHTML = details;
+        statusEl.textContent = content;
+        contentEl.innerHTML = '';
     }
     
     modal.style.display = 'flex';
