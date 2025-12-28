@@ -3839,3 +3839,97 @@ select.form-input option {
     background: #1e293b;
     color: #f1f5f9;
 }
+
+/* Pending 2FA Setup */
+.admin-action-row.pending-2fa {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-action-row.pending-2fa .action-label {
+    color: #f59e0b;
+}
+
+/* Admin 2FA Setup Display */
+.admin-2fa-setup {
+    text-align: left;
+}
+
+.admin-2fa-setup .setup-section {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 8px;
+}
+
+.admin-2fa-setup .setup-section h4 {
+    margin: 0 0 12px 0;
+    color: #06b6d4;
+}
+
+.admin-2fa-setup .qr-container {
+    text-align: center;
+    margin: 12px 0;
+}
+
+.admin-2fa-setup .secret-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.admin-2fa-setup .secret-display code {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    color: #10b981;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+.admin-2fa-setup .backup-codes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.admin-2fa-setup .backup-codes-grid code {
+    background: rgba(15, 23, 42, 0.8);
+    padding: 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    color: #10b981;
+    font-size: 0.85rem;
+}
+
+.admin-2fa-setup .setup-instructions {
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+}
+
+.admin-2fa-setup .setup-instructions h4 {
+    color: #06b6d4;
+    margin: 0 0 12px 0;
+}
+
+.admin-2fa-setup .setup-instructions ol {
+    margin: 0;
+    padding-left: 20px;
+    color: #94a3b8;
+}
+
+.admin-2fa-setup .setup-instructions li {
+    margin: 8px 0;
+}
+
+/* Status Pending Color */
+.status-pending {
+    color: #f59e0b !important;
+}

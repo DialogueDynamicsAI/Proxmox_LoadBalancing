@@ -752,3 +752,64 @@ async def admin_send_password_email(
         return {"success": True, "message": f"Password reset email sent to {target_user.email}"}
     else:
         raise HTTPException(status_code=500, detail=result.get("message", "Failed to send email"))
+
+
+@users_router.post("/{user_id}/setup-2fa")
+async def admin_setup_user_2fa(
+    user_id: int,
+    user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Generate 2FA secret for a user (Admin only) - returns QR code and secret for admin to share"""
+    from auth.totp_service import generate_totp_secret, get_totp_uri, generate_backup_codes
+    import json
+    
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate new secret
+    secret = generate_totp_secret()
+    
+    # Generate backup codes
+    backup_codes = generate_backup_codes()
+    
+    # Save to user
+    target_user.totp_secret = secret
+    target_user.totp_enabled = True
+    target_user.backup_codes = json.dumps([User.hash_password(code) for code in backup_codes])
+    db.commit()
+    
+    # Generate QR URI
+    uri = get_totp_uri(secret, target_user.username)
+    
+    return {
+        "success": True,
+        "message": f"2FA has been enabled for {target_user.username}",
+        "secret": secret,
+        "qr_uri": uri,
+        "backup_codes": backup_codes,
+        "instructions": "Share the QR code or secret with the user. They must save the backup codes securely."
+    }
+
+
+@users_router.post("/{user_id}/require-2fa")
+async def admin_require_user_2fa(
+    user_id: int,
+    require: bool = True,
+    user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Set or unset the require 2FA flag for a user (Admin only)"""
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    target_user.require_2fa_setup = require
+    db.commit()
+    
+    action = "enabled" if require else "disabled"
+    return {
+        "success": True,
+        "message": f"2FA requirement {action} for {target_user.username}. They will be prompted to set up 2FA on next login."
+    }

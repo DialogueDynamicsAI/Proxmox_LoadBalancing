@@ -2281,7 +2281,9 @@ async function loadUsers() {
                             <span class="value">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</span>
                         <div class="user-detail">
                             <span class="label">2FA:</span>
-                            <span class="value ${user.totp_enabled ? 'status-active' : 'status-inactive'}">${user.totp_enabled ? '🔐 Enabled' : '🔓 Disabled'}</span>
+                            <span class="value ${user.totp_enabled ? 'status-active' : (user.require_2fa_setup ? 'status-pending' : 'status-inactive')}">
+                                ${user.totp_enabled ? '🔐 Enabled' : (user.require_2fa_setup ? '⏳ Pending Setup' : '🔓 Disabled')}
+                            </span>
                         </div>
                         </div>
                     </div>
@@ -2409,8 +2411,23 @@ async function showEditUserModal(userId) {
                                 ${user.totp_enabled ? '🔐 Enabled' : '🔓 Disabled'}
                             </span>
                         </div>
-                        ${user.totp_enabled ? `<button type="button" class="btn btn-sm btn-warning" onclick="resetUser2FA(${user.id}, '${user.username}')">🔄 Reset 2FA</button>` : '<span class="muted-text">2FA not enabled</span>'}
+                        <div class="action-buttons">
+                            ${user.totp_enabled 
+                                ? `<button type="button" class="btn btn-sm btn-warning" onclick="resetUser2FA(${user.id}, '${user.username}')">🔄 Reset 2FA</button>` 
+                                : `<button type="button" class="btn btn-sm btn-primary" onclick="requireUser2FA(${user.id}, '${user.username}', true)">📋 Require on Next Login</button>`
+                            }
+                        </div>
                     </div>
+                    
+                    ${!user.totp_enabled && user.require_2fa_setup ? `
+                    <div class="admin-action-row pending-2fa">
+                        <div class="action-info">
+                            <span class="action-label">⏳ 2FA Setup Pending</span>
+                            <span class="action-desc">User will be prompted to setup 2FA on next login</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="requireUser2FA(${user.id}, '${user.username}', false)">Cancel Requirement</button>
+                    </div>
+                    ` : ''}
                     
                     <div class="admin-action-row">
                         <div class="action-info">
@@ -3369,3 +3386,112 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuth();
     updateUserProfileDisplay();
 });
+
+// ============== Admin Setup 2FA for User ==============
+
+async function setupUser2FA(userId, username) {
+    showToast(`Setting up 2FA for ${username}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/setup-2fa`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to setup 2FA');
+        }
+        
+        const data = await response.json();
+        
+        // Show the 2FA setup info for admin to share with user
+        const content = `
+            <div class="admin-2fa-setup">
+                <p class="success-text">✅ 2FA has been enabled for <strong>${username}</strong></p>
+                
+                <div class="setup-section">
+                    <h4>📱 QR Code (Share with user)</h4>
+                    <div class="qr-container">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_uri)}" alt="2FA QR Code">
+                    </div>
+                </div>
+                
+                <div class="setup-section">
+                    <h4>🔑 Manual Entry Secret</h4>
+                    <div class="secret-display">
+                        <code>${data.secret}</code>
+                        <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('${data.secret}')">📋 Copy</button>
+                    </div>
+                </div>
+                
+                <div class="setup-section">
+                    <h4>🔐 Recovery Codes</h4>
+                    <p class="warning-text">⚠️ Share these with the user securely. They cannot be shown again!</p>
+                    <div class="backup-codes-grid">
+                        ${data.backup_codes.map(code => `<code>${code}</code>`).join('')}
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="copyBackupCodes([${data.backup_codes.map(c => `'${c}'`).join(',')}])">📋 Copy All Codes</button>
+                </div>
+                
+                <div class="setup-instructions">
+                    <h4>📋 Instructions for User</h4>
+                    <ol>
+                        <li>Install an authenticator app (Google Authenticator, Authy, Microsoft Authenticator)</li>
+                        <li>Scan the QR code OR manually enter the secret</li>
+                        <li>Save the recovery codes in a secure location</li>
+                        <li>Use the 6-digit code from the app when logging in</li>
+                    </ol>
+                </div>
+            </div>
+        `;
+        
+        showResultsModal(`2FA Setup for ${username}`, 'success', '', content);
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to setup 2FA: ${error.message}`, 'error');
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard', 'success');
+    }).catch(() => {
+        showToast('Failed to copy', 'error');
+    });
+}
+
+function copyBackupCodes(codes) {
+    const text = codes.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('All recovery codes copied', 'success');
+    }).catch(() => {
+        showToast('Failed to copy', 'error');
+    });
+}
+
+// ============== Require 2FA on Next Login ==============
+
+async function requireUser2FA(userId, username, require) {
+    const action = require ? 'requiring' : 'canceling requirement for';
+    showToast(`${require ? 'Enabling' : 'Disabling'} 2FA requirement for ${username}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/require-2fa?require=${require}`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to update 2FA requirement');
+        }
+        
+        const result = await response.json();
+        showToast(result.message, 'success');
+        closeResultsModal();
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed: ${error.message}`, 'error');
+    }
+}

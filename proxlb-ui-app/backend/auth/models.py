@@ -44,6 +44,7 @@ class User(Base):
     totp_secret = Column(String(32), nullable=True)
     totp_enabled = Column(Boolean, default=False)
     backup_codes = Column(String(500), nullable=True)  # JSON array of hashed backup codes
+    require_2fa_setup = Column(Boolean, default=False)  # Force user to setup 2FA on next login
     
     def verify_password(self, plain_password: str) -> bool:
         """Verify a password against the hash"""
@@ -65,5 +66,6 @@ class User(Base):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
-            "totp_enabled": self.totp_enabled or False
+            "totp_enabled": self.totp_enabled or False,
+            "require_2fa_setup": self.require_2fa_setup or False
         }
