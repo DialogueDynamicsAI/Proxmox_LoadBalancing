@@ -578,14 +578,28 @@ function refreshNodes() {
 
 async function toggleMaintenance(nodeName, enable) {
     const action = enable ? 'add' : 'remove';
+    const title = enable ? 'Enter Maintenance Mode' : 'Exit Maintenance Mode';
+    
+    showResultsModal(title, 'loading', `${enable ? 'Entering' : 'Exiting'} maintenance mode for ${nodeName}...`);
+    
     try {
-        showToast(`${enable ? 'Entering' : 'Exiting'} maintenance mode...`, 'info');
-        await apiPost('/maintenance', { node: nodeName, action });
-        showToast(`Node ${nodeName} ${enable ? 'entered' : 'exited'} maintenance mode`, 'success');
-        loadNodes();
-        loadDashboard();
+        const result = await apiPost('/maintenance', { node: nodeName, action });
+        
+        if (result.success) {
+            const content = `
+                <div class="log-line">Node: <strong>${nodeName}</strong></div>
+                <div class="log-line">Action: ${enable ? 'Added to' : 'Removed from'} maintenance mode</div>
+                <div class="log-line">Current maintenance nodes: ${(result.maintenance_nodes || []).join(', ') || 'None'}</div>
+                ${enable ? '<div class="log-line warning">⚠️ VMs on this node will be migrated during next rebalance</div>' : ''}
+            `;
+            updateResultsModal('success', `Node ${nodeName} ${enable ? 'entered' : 'exited'} maintenance mode`, content);
+            loadNodes();
+            loadDashboard();
+        } else {
+            updateResultsModal('error', 'Failed to update maintenance mode', `<pre>${result.error || 'Unknown error'}</pre>`);
+        }
     } catch (error) {
-        showToast('Failed to update maintenance mode', 'error');
+        updateResultsModal('error', 'Failed to update maintenance mode', `<pre>${error.message || 'Request failed'}</pre>`);
     }
 }
 
@@ -806,69 +820,203 @@ async function saveBalancingSettings() {
 }
 
 async function triggerRebalance() {
+    showResultsModal('Trigger Rebalance', 'loading', 'Running rebalance operation...');
+    
     try {
-        showToast('Rebalancing started...', 'info');
-        const result = await apiPost('/balancing/trigger');
-        showToast('Rebalance completed', 'success');
+        const response = await apiPost('/balancing/trigger');
+        const result = response.result || response;
+        
+        if (result.success) {
+            const output = result.output || [];
+            const migrations = result.migrations || [];
+            
+            let content = '';
+            if (migrations.length > 0) {
+                content += '<div class="results-section"><strong>Migrations:</strong></div>';
+                migrations.forEach(line => {
+                    content += `<div class="log-line migration">🔄 ${escapeHtml(line)}</div>`;
+                });
+            }
+            if (output.length > 0) {
+                content += '<div class="results-section"><strong>Output:</strong></div>';
+                output.forEach(line => {
+                    const lineClass = line.toLowerCase().includes('error') ? 'error' : 
+                                      line.toLowerCase().includes('warning') ? 'warning' : '';
+                    content += `<div class="log-line ${lineClass}">${escapeHtml(line)}</div>`;
+                });
+            }
+            if (!content) {
+                content = '<div class="log-line">Rebalance completed with no migrations needed.</div>';
+            }
+            
+            updateResultsModal('success', result.message || 'Rebalance completed successfully', content);
+        } else {
+            updateResultsModal('error', 'Rebalance failed', `<pre>${escapeHtml(result.error || 'Unknown error')}</pre>`);
+        }
         loadDashboard();
     } catch (error) {
-        showToast('Rebalance failed', 'error');
+        updateResultsModal('error', 'Rebalance failed', `<pre>${escapeHtml(error.message || 'Request failed')}</pre>`);
     }
 }
 
 async function triggerDryRun() {
+    showResultsModal('Dry Run Simulation', 'loading', 'Running simulation (no actual migrations)...');
+    
     try {
-        showToast('Running simulation...', 'info');
-        const result = await apiPost('/balancing/trigger?dry_run=true');
+        const response = await apiPost('/balancing/trigger?dry_run=true');
+        const result = response.result || response;
         
-        if (result.result) {
-            showToast('Dry run complete - check logs for details', 'success');
+        if (result.success) {
+            const output = result.output || [];
+            const migrations = result.migrations || [];
+            
+            let content = '';
+            if (migrations.length > 0) {
+                content += '<div class="results-section"><strong>Planned Migrations (Dry Run):</strong></div>';
+                migrations.forEach(line => {
+                    content += `<div class="log-line migration">📋 ${escapeHtml(line)}</div>`;
+                });
+            } else {
+                content += '<div class="log-line">No migrations would be performed - cluster is balanced.</div>';
+            }
+            if (output.length > 0) {
+                content += '<div class="results-section" style="margin-top: 1rem;"><strong>Full Output:</strong></div>';
+                output.forEach(line => {
+                    content += `<div class="log-line">${escapeHtml(line)}</div>`;
+                });
+            }
+            
+            updateResultsModal('success', 'Dry run completed', content);
         } else {
-            showToast('Dry run complete', 'info');
+            updateResultsModal('error', 'Dry run failed', `<pre>${escapeHtml(result.error || 'Unknown error')}</pre>`);
         }
     } catch (error) {
-        showToast('Dry run failed', 'error');
+        updateResultsModal('error', 'Dry run failed', `<pre>${escapeHtml(error.message || 'Request failed')}</pre>`);
     }
 }
 
 async function getBestNode() {
+    showResultsModal('Best Node for New VM', 'loading', 'Calculating optimal node...');
+    
     try {
         const result = await apiGet('/balancing/best-node');
-        showToast(`Best node for new VM: ${result.best_node}`, 'success');
+        
+        if (result.success) {
+            const content = `
+                <div class="best-node">${escapeHtml(result.best_node)}</div>
+                ${result.output ? `<div class="results-section" style="margin-top: 1rem;"><strong>Details:</strong></div><pre>${escapeHtml(result.output)}</pre>` : ''}
+            `;
+            updateResultsModal('success', 'Best node calculated', content);
+        } else {
+            updateResultsModal('error', 'Failed to get best node', `<pre>${escapeHtml(result.error || 'Unknown error')}</pre>`);
+        }
     } catch (error) {
-        showToast('Failed to get best node', 'error');
+        updateResultsModal('error', 'Failed to get best node', `<pre>${escapeHtml(error.message || 'Request failed')}</pre>`);
     }
+}
+
+// Results Modal Functions
+function showResultsModal(title, status, content) {
+    const modal = document.getElementById('results-modal');
+    const titleEl = document.getElementById('results-modal-title');
+    const statusEl = document.getElementById('results-modal-status');
+    const contentEl = document.getElementById('results-modal-content');
+    
+    if (!modal) return;
+    
+    titleEl.textContent = title;
+    statusEl.className = `results-status ${status}`;
+    
+    if (status === 'loading') {
+        statusEl.innerHTML = `<span class="spinner"></span> ${content}`;
+        contentEl.innerHTML = '';
+    } else {
+        statusEl.textContent = content;
+        contentEl.innerHTML = '';
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function updateResultsModal(status, message, content) {
+    const statusEl = document.getElementById('results-modal-status');
+    const contentEl = document.getElementById('results-modal-content');
+    
+    if (!statusEl || !contentEl) return;
+    
+    statusEl.className = `results-status ${status}`;
+    const icon = status === 'success' ? '✓' : status === 'error' ? '✗' : 'ℹ';
+    statusEl.innerHTML = `<span>${icon}</span> ${message}`;
+    contentEl.innerHTML = content;
+}
+
+function closeResultsModal() {
+    const modal = document.getElementById('results-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ============== Service Control ==============
 
 async function startService() {
+    showResultsModal('Start ProxLB Service', 'loading', 'Starting ProxLB service...');
+    
     try {
-        await apiPost('/service/start');
-        showToast('ProxLB service started', 'success');
-        updateServiceStatusDisplay(true);
+        const result = await apiPost('/service/start');
+        
+        if (result.success) {
+            updateResultsModal('success', result.message || 'Service started successfully', 
+                '<div class="log-line">ProxLB daemon is now running and will automatically balance your cluster.</div>');
+            updateServiceStatusDisplay(true);
+            loadDashboard();
+        } else {
+            updateResultsModal('error', 'Failed to start service', `<pre>${result.error || 'Unknown error'}</pre>`);
+        }
     } catch (error) {
-        showToast('Failed to start service', 'error');
+        updateResultsModal('error', 'Failed to start service', `<pre>${error.message || 'Request failed'}</pre>`);
     }
 }
 
 async function stopService() {
+    showResultsModal('Stop ProxLB Service', 'loading', 'Stopping ProxLB service...');
+    
     try {
-        await apiPost('/service/stop');
-        showToast('ProxLB service stopped', 'success');
-        updateServiceStatusDisplay(false);
+        const result = await apiPost('/service/stop');
+        
+        if (result.success) {
+            updateResultsModal('success', result.message || 'Service stopped successfully', 
+                '<div class="log-line">ProxLB daemon has been stopped. Automatic balancing is paused.</div>');
+            updateServiceStatusDisplay(false);
+        } else {
+            updateResultsModal('error', 'Failed to stop service', `<pre>${result.error || 'Unknown error'}</pre>`);
+        }
     } catch (error) {
-        showToast('Failed to stop service', 'error');
+        updateResultsModal('error', 'Failed to stop service', `<pre>${error.message || 'Request failed'}</pre>`);
     }
 }
 
 async function restartService() {
+    showResultsModal('Restart ProxLB Service', 'loading', 'Restarting ProxLB service...');
+    
     try {
-        await apiPost('/service/restart');
-        showToast('ProxLB service restarted', 'success');
-        updateServiceStatusDisplay(true);
+        const result = await apiPost('/service/restart');
+        
+        if (result.success) {
+            updateResultsModal('success', result.message || 'Service restarted successfully', 
+                '<div class="log-line">ProxLB daemon has been restarted and is now running.</div>');
+            updateServiceStatusDisplay(true);
+            loadDashboard();
+        } else {
+            updateResultsModal('error', 'Failed to restart service', `<pre>${result.error || 'Unknown error'}</pre>`);
+        }
     } catch (error) {
-        showToast('Failed to restart service', 'error');
+        updateResultsModal('error', 'Failed to restart service', `<pre>${error.message || 'Request failed'}</pre>`);
     }
 }
 
