@@ -262,4 +262,109 @@ class ProxmoxAPI:
             }
         except Exception as e:
             raise Exception(f"Failed to get guest details: {e}")
+    
+    async def get_cluster_tasks(self, limit: int = 50, status: Optional[str] = None) -> List[Dict]:
+        """Get cluster tasks (migrations, backups, etc.)"""
+        try:
+            client = self._get_client()
+            
+            # Get tasks from cluster
+            try:
+                tasks = client.cluster.tasks.get()
+            except:
+                # Fall back to getting tasks from each node
+                tasks = []
+                nodes = client.nodes.get()
+                for node in nodes:
+                    try:
+                        node_tasks = client.nodes(node.get("node")).tasks.get()
+                        for task in node_tasks:
+                            task["source_node"] = node.get("node")
+                        tasks.extend(node_tasks)
+                    except:
+                        continue
+            
+            # Parse and format tasks
+            formatted_tasks = []
+            for task in tasks:
+                task_type = task.get("type", "unknown")
+                task_status = task.get("status", "unknown")
+                
+                # Filter by status if specified
+                if status:
+                    if status == "running" and task_status != "running":
+                        continue
+                    elif status == "ok" and task_status != "OK":
+                        continue
+                    elif status == "error" and "error" not in str(task_status).lower():
+                        continue
+                
+                # Determine if it's a migration
+                is_migration = "migrate" in task_type.lower() or "move" in task_type.lower()
+                
+                # Parse UPID for more info
+                upid = task.get("upid", "")
+                
+                formatted_task = {
+                    "id": task.get("upid", task.get("id", "")),
+                    "type": task_type,
+                    "status": task_status,
+                    "node": task.get("node", task.get("source_node", "")),
+                    "user": task.get("user", ""),
+                    "starttime": task.get("starttime", 0),
+                    "endtime": task.get("endtime", 0),
+                    "is_migration": is_migration,
+                    "success": task_status == "OK" or task_status == "" or (isinstance(task_status, str) and "ok" in task_status.lower()),
+                    "description": self._format_task_description(task)
+                }
+                
+                formatted_tasks.append(formatted_task)
+            
+            # Sort by start time (newest first)
+            formatted_tasks.sort(key=lambda x: x.get("starttime", 0), reverse=True)
+            
+            return formatted_tasks[:limit]
+        except Exception as e:
+            raise Exception(f"Failed to get cluster tasks: {e}")
+    
+    def _format_task_description(self, task: Dict) -> str:
+        """Format task description for display"""
+        task_type = task.get("type", "unknown")
+        status = task.get("status", "")
+        node = task.get("node", "")
+        
+        # Common task type descriptions
+        task_descriptions = {
+            "qmigrate": "VM Migration",
+            "vzmigrate": "Container Migration",
+            "migrate": "Migration",
+            "qmcreate": "VM Create",
+            "qmstart": "VM Start",
+            "qmstop": "VM Stop",
+            "qmshutdown": "VM Shutdown",
+            "qmreboot": "VM Reboot",
+            "qmsnapshot": "VM Snapshot",
+            "vzdump": "Backup",
+            "vzrestore": "Restore",
+            "qmclone": "VM Clone",
+            "download": "Download",
+            "srvreload": "Service Reload",
+            "startall": "Start All",
+            "stopall": "Stop All",
+        }
+        
+        desc = task_descriptions.get(task_type, task_type.replace("_", " ").title())
+        
+        # Add VM info if available
+        if "id" in str(task.get("upid", "")):
+            # Try to extract VMID from UPID
+            import re
+            vmid_match = re.search(r':(\d+):', str(task.get("upid", "")))
+            if vmid_match:
+                desc += f" (ID: {vmid_match.group(1)})"
+        
+        if node:
+            desc += f" on {node}"
+        
+        return desc
 

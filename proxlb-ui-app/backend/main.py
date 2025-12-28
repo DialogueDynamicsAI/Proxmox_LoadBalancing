@@ -332,27 +332,54 @@ async def get_best_node():
 
 
 @app.get("/api/logs")
-async def get_logs(lines: int = 100, level: Optional[str] = None):
-    """Get ProxLB logs"""
+async def get_logs(lines: int = 100, level: Optional[str] = None, event_type: Optional[str] = None):
+    """Get ProxLB logs with enhanced filtering"""
     if not log_parser:
         raise HTTPException(status_code=503, detail="Log parser not available")
     
     try:
-        logs = log_parser.get_logs(lines=lines, level=level)
-        return {"logs": logs}
+        logs = log_parser.get_logs(lines=lines, level=level, event_type=event_type)
+        summary = log_parser.get_events_summary()
+        return {"logs": logs, "summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/logs/raw")
+async def get_raw_logs(lines: int = 200):
+    """Get raw ProxLB container logs"""
+    if not log_parser:
+        raise HTTPException(status_code=503, detail="Log parser not available")
+    
+    try:
+        raw = log_parser.get_raw_logs(lines=lines)
+        return {"logs": raw, "lines": lines}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/migrations")
 async def get_migrations(limit: int = 50):
-    """Get recent migration history"""
+    """Get recent migration history from logs"""
     if not log_parser:
         raise HTTPException(status_code=503, detail="Log parser not available")
     
     try:
         migrations = log_parser.get_migrations(limit=limit)
         return {"migrations": migrations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/tasks")
+async def get_tasks(limit: int = 50, status: Optional[str] = None):
+    """Get Proxmox cluster tasks (migrations, etc.)"""
+    if not proxmox_api:
+        raise HTTPException(status_code=503, detail="Proxmox API not initialized")
+    
+    try:
+        tasks = await proxmox_api.get_cluster_tasks(limit=limit, status=status)
+        return {"tasks": tasks}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

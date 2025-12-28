@@ -968,38 +968,265 @@ function renderIgnoredVMs(listId, countId, ignored) {
 
 // ============== Logs Page ==============
 
+let currentLogTab = 'proxlb';
+let logsData = { logs: [], summary: {} };
+let tasksData = [];
+let migrationsData = [];
+
 async function loadLogs() {
     try {
         const level = document.getElementById('log-level-filter')?.value || '';
-        const url = level ? `/logs?lines=200&level=${level}` : '/logs?lines=200';
+        const lines = document.getElementById('log-lines-filter')?.value || '100';
+        
+        let url = `/logs?lines=${lines}`;
+        if (level) url += `&level=${level}`;
         
         const data = await apiGet(url);
-        const viewer = document.getElementById('log-viewer');
+        logsData = data;
         
-        if (!viewer) return;
+        // Update summary
+        updateLogSummary(data.summary);
         
-        if (!data.logs || data.logs.length === 0) {
-            viewer.textContent = 'No logs available';
-            return;
-        }
-        
-        viewer.innerHTML = data.logs.map(log => {
-            const level = log.level?.toLowerCase() || 'info';
-            return `<div class="log-line ${level}">${log.timestamp || ''} [${log.level}] ${log.message}</div>`;
-        }).join('');
-        
-        // Auto-scroll if enabled
-        if (document.getElementById('auto-scroll')?.checked) {
-            viewer.scrollTop = viewer.scrollHeight;
-        }
+        // Render logs
+        renderLogs(data.logs || []);
         
     } catch (error) {
-        document.getElementById('log-viewer').textContent = 'Failed to load logs';
+        document.getElementById('log-viewer').innerHTML = '<div class="log-line error">Failed to load logs</div>';
     }
 }
 
-function refreshLogs() {
+async function loadTasks() {
+    try {
+        const status = document.getElementById('task-status-filter')?.value || '';
+        let url = '/tasks?limit=100';
+        if (status) url += `&status=${status}`;
+        
+        const data = await apiGet(url);
+        tasksData = data.tasks || [];
+        renderTasks(tasksData);
+        
+    } catch (error) {
+        document.getElementById('tasks-tbody').innerHTML = '<tr><td colspan="6" class="empty-table">Failed to load tasks</td></tr>';
+    }
+}
+
+async function loadMigrations() {
+    try {
+        const data = await apiGet('/migrations?limit=50');
+        migrationsData = data.migrations || [];
+        renderMigrations(migrationsData);
+        
+        // Also load tasks that are migrations
+        const tasksData = await apiGet('/tasks?limit=100');
+        const migrationTasks = (tasksData.tasks || []).filter(t => t.is_migration);
+        
+        // Combine and dedupe
+        const allMigrations = [...migrationsData];
+        for (const task of migrationTasks) {
+            allMigrations.push({
+                timestamp: formatTimestamp(task.starttime),
+                guest_name: task.description,
+                from_node: task.node,
+                to_node: '',
+                status: task.success ? 'completed' : 'failed',
+                type: task.type
+            });
+        }
+        
+        renderMigrations(allMigrations);
+        
+    } catch (error) {
+        document.getElementById('migrations-tbody').innerHTML = '<tr><td colspan="5" class="empty-table">Failed to load migrations</td></tr>';
+    }
+}
+
+function updateLogSummary(summary) {
+    const container = document.getElementById('log-summary');
+    if (!container || !summary) return;
+    
+    const byLevel = summary.by_level || {};
+    
+    container.innerHTML = `
+        <div class="log-stat">
+            <span class="log-stat-value">${summary.total || 0}</span>
+            <span class="log-stat-label">Total Entries</span>
+        </div>
+        <div class="log-stat">
+            <span class="log-stat-value info">${byLevel.INFO || 0}</span>
+            <span class="log-stat-label">Info</span>
+        </div>
+        <div class="log-stat">
+            <span class="log-stat-value warning">${byLevel.WARNING || 0}</span>
+            <span class="log-stat-label">Warnings</span>
+        </div>
+        <div class="log-stat">
+            <span class="log-stat-value error">${byLevel.ERROR || 0}</span>
+            <span class="log-stat-label">Errors</span>
+        </div>
+        <div class="log-stat">
+            <span class="log-stat-value success">${summary.migrations?.total || 0}</span>
+            <span class="log-stat-label">Migrations</span>
+        </div>
+    `;
+}
+
+function renderLogs(logs) {
+    const viewer = document.getElementById('log-viewer');
+    if (!viewer) return;
+    
+    if (!logs || logs.length === 0) {
+        viewer.innerHTML = '<div class="log-line">No logs available</div>';
+        return;
+    }
+    
+    viewer.innerHTML = logs.map(log => {
+        const level = (log.level || 'INFO').toLowerCase();
+        const timestamp = log.timestamp || '';
+        const message = log.message || '';
+        const eventType = log.event_type || '';
+        
+        // Add icon based on event type
+        let icon = '';
+        if (log.is_migration) icon = '🔄 ';
+        else if (eventType === 'error') icon = '❌ ';
+        else if (eventType === 'warning') icon = '⚠️ ';
+        else if (eventType === 'rebalance_start' || eventType === 'rebalance_complete') icon = '⚖️ ';
+        
+        return `<div class="log-line ${level}" data-event="${eventType}">
+            <span class="log-timestamp">${timestamp}</span>
+            <span class="log-level ${level}">[${log.level || 'INFO'}]</span>
+            <span class="log-message">${icon}${message}</span>
+        </div>`;
+    }).join('');
+    
+    // Auto-scroll if enabled
+    if (document.getElementById('auto-scroll')?.checked) {
+        viewer.scrollTop = viewer.scrollHeight;
+    }
+}
+
+function renderTasks(tasks) {
+    const tbody = document.getElementById('tasks-tbody');
+    if (!tbody) return;
+    
+    if (!tasks || tasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-table">No tasks found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = tasks.map(task => {
+        const startTime = formatTimestamp(task.starttime);
+        const endTime = task.endtime ? formatTimestamp(task.endtime) : '-';
+        const duration = task.endtime && task.starttime 
+            ? formatDuration(task.endtime - task.starttime) 
+            : (task.status === 'running' ? 'Running...' : '-');
+        
+        const statusClass = task.success ? 'success' : (task.status === 'running' ? 'running' : 'error');
+        const statusIcon = task.success ? '✓' : (task.status === 'running' ? '⏳' : '✗');
+        
+        return `
+            <tr class="${statusClass}">
+                <td><span class="task-time">${startTime}</span></td>
+                <td><span class="task-type ${task.is_migration ? 'migration' : ''}">${task.type}</span></td>
+                <td>${task.description}</td>
+                <td><span class="node-badge">${task.node}</span></td>
+                <td><span class="status-badge ${statusClass}">${statusIcon} ${task.status || 'OK'}</span></td>
+                <td>${duration}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderMigrations(migrations) {
+    const tbody = document.getElementById('migrations-tbody');
+    if (!tbody) return;
+    
+    if (!migrations || migrations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-table">No migrations found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = migrations.map(mig => {
+        const statusClass = mig.status === 'completed' || mig.status === 'started' ? 'success' : 'error';
+        const statusIcon = mig.status === 'completed' ? '✓' : (mig.status === 'started' ? '⏳' : '✗');
+        
+        return `
+            <tr>
+                <td><span class="task-time">${mig.timestamp || ''}</span></td>
+                <td><span class="guest-name">${mig.guest_name || mig.guest || 'Unknown'}</span></td>
+                <td><span class="node-badge">${mig.from_node || '-'}</span></td>
+                <td><span class="node-badge">${mig.to_node || '-'}</span></td>
+                <td><span class="status-badge ${statusClass}">${statusIcon} ${mig.status || 'started'}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function switchLogTab(tab) {
+    currentLogTab = tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.log-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.log-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `tab-${tab}`);
+    });
+    
+    // Show/hide task status filter
+    const taskStatusGroup = document.getElementById('task-status-group');
+    if (taskStatusGroup) {
+        taskStatusGroup.style.display = tab === 'tasks' ? 'flex' : 'none';
+    }
+    
+    // Load appropriate data
+    switch (tab) {
+        case 'proxlb':
+            loadLogs();
+            break;
+        case 'tasks':
+            loadTasks();
+            break;
+        case 'migrations':
+            loadMigrations();
+            break;
+    }
+}
+
+function filterLogs() {
     loadLogs();
+}
+
+function filterTasks() {
+    loadTasks();
+}
+
+function formatTimestamp(unixTime) {
+    if (!unixTime) return '';
+    const date = new Date(unixTime * 1000);
+    return date.toLocaleString();
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+
+function refreshLogs() {
+    switch (currentLogTab) {
+        case 'proxlb':
+            loadLogs();
+            break;
+        case 'tasks':
+            loadTasks();
+            break;
+        case 'migrations':
+            loadMigrations();
+            break;
+    }
     showToast('Logs refreshed', 'info');
 }
 

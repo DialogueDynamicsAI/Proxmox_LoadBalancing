@@ -474,27 +474,114 @@
             <!-- Logs Page -->
             <section class="page" id="page-logs">
                 <header class="page-header">
-                    <h1>Logs</h1>
+                    <h1>Logs & <em>Tasks</em></h1>
                     <div class="header-actions">
-                        <select class="filter-select" id="log-level-filter">
+                        <button class="btn btn-secondary" onclick="refreshLogs()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                </header>
+                
+                <!-- Log Tabs -->
+                <div class="log-tabs">
+                    <button class="log-tab active" data-tab="proxlb" onclick="switchLogTab('proxlb')">
+                        📋 ProxLB Logs
+                    </button>
+                    <button class="log-tab" data-tab="tasks" onclick="switchLogTab('tasks')">
+                        ⚡ Cluster Tasks
+                    </button>
+                    <button class="log-tab" data-tab="migrations" onclick="switchLogTab('migrations')">
+                        🔄 Migrations
+                    </button>
+                </div>
+                
+                <!-- Log Summary -->
+                <div class="log-summary" id="log-summary">
+                    <!-- Summary will be populated -->
+                </div>
+                
+                <!-- Filter Bar -->
+                <div class="log-filter-bar">
+                    <div class="filter-group">
+                        <label>Level</label>
+                        <select class="filter-select" id="log-level-filter" onchange="filterLogs()">
                             <option value="">All Levels</option>
                             <option value="INFO">INFO</option>
                             <option value="WARNING">WARNING</option>
                             <option value="ERROR">ERROR</option>
                             <option value="DEBUG">DEBUG</option>
                         </select>
-                        <label class="toggle-label">
-                            <input type="checkbox" id="auto-scroll" checked>
-                            Auto-scroll
-                        </label>
-                        <button class="btn btn-secondary" onclick="refreshLogs()">
-                            <span>🔄</span> Refresh
-                        </button>
                     </div>
-                </header>
+                    <div class="filter-group" id="task-status-group" style="display: none;">
+                        <label>Status</label>
+                        <select class="filter-select" id="task-status-filter" onchange="filterTasks()">
+                            <option value="">All Status</option>
+                            <option value="running">Running</option>
+                            <option value="ok">Completed</option>
+                            <option value="error">Failed</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Lines</label>
+                        <select class="filter-select" id="log-lines-filter" onchange="filterLogs()">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="auto-scroll" checked>
+                        Auto-scroll
+                    </label>
+                </div>
 
-                <div class="log-container">
-                    <pre class="log-viewer" id="log-viewer">Loading logs...</pre>
+                <!-- ProxLB Logs Tab Content -->
+                <div class="log-tab-content active" id="tab-proxlb">
+                    <div class="log-container">
+                        <div class="log-viewer" id="log-viewer">Loading logs...</div>
+                    </div>
+                </div>
+                
+                <!-- Cluster Tasks Tab Content -->
+                <div class="log-tab-content" id="tab-tasks">
+                    <div class="tasks-container">
+                        <table class="data-table" id="tasks-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Node</th>
+                                    <th>Status</th>
+                                    <th>Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-tbody">
+                                <!-- Tasks will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Migrations Tab Content -->
+                <div class="log-tab-content" id="tab-migrations">
+                    <div class="migrations-container">
+                        <table class="data-table" id="migrations-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Guest</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="migrations-tbody">
+                                <!-- Migrations will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
