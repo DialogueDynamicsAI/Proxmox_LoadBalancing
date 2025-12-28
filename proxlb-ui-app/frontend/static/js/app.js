@@ -3356,19 +3356,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     hideAdminOnlyNavItems();
 });
 
-// Hide nav items that require admin role
+// Hide nav items based on user role
 function hideAdminOnlyNavItems() {
     const role = getUserRole();
     
-    // Users and Settings are admin-only
-    const usersNav = document.querySelector('a[onclick*="showSection(\'users\')"]');
-    const settingsNav = document.querySelector('a[onclick*="showSection(\'settings\')"]');
-    const configNav = document.querySelector('a[onclick*="showSection(\'config\')"]');
+    // Admin-only items (Config, Users, Settings)
+    const adminOnlyItems = document.querySelectorAll('.nav-item[data-role="admin"]');
+    adminOnlyItems.forEach(item => {
+        item.style.display = isAdmin() ? '' : 'none';
+    });
     
-    if (!isAdmin()) {
-        if (usersNav) usersNav.style.display = 'none';
-        if (settingsNav) settingsNav.style.display = 'none';
-        if (configNav) configNav.style.display = 'none';
+    // Tech and Admin items (Balancing)
+    const techItems = document.querySelectorAll('.nav-item[data-role-action="tech"]');
+    techItems.forEach(item => {
+        item.style.display = (isAdmin() || role === 'tech') ? '' : 'none';
+    });
+    
+    // Hide Rebalance Now button from dashboard for level1 users
+    const rebalanceBtn = document.querySelector('.btn-primary[onclick*="triggerRebalance"]');
+    if (rebalanceBtn) {
+        rebalanceBtn.style.display = (isAdmin() || role === 'tech') ? '' : 'none';
+    }
+    
+    // Also hide Rules nav for level1 (they can't manage rules)
+    const rulesNav = document.querySelector('.nav-item[data-page="rules"]');
+    if (rulesNav) {
+        rulesNav.style.display = (isAdmin() || role === 'tech') ? '' : 'none';
     }
 }
 
