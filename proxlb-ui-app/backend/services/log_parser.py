@@ -164,12 +164,21 @@ class LogParser:
             match = pattern.search(message)
             if match:
                 groups = match.groups()
-                if len(groups) >= 3:
+                # Main pattern: "Starting to migrate (VM/CT) guest (name) from (node) to (node)"
+                if len(groups) >= 4:
+                    return {
+                        "type": groups[0],       # VM or CT
+                        "guest": groups[1],      # Guest name
+                        "from_node": groups[2],  # Source node
+                        "to_node": groups[3],    # Destination node
+                        "status": "started"
+                    }
+                elif len(groups) >= 3:
                     return {
                         "guest": groups[0],
-                        "from_node": groups[1] if len(groups) > 1 else "unknown",
-                        "to_node": groups[2] if len(groups) > 2 else "unknown",
-                        "status": groups[3] if len(groups) > 3 else "started"
+                        "from_node": groups[1],
+                        "to_node": groups[2],
+                        "status": "started"
                     }
                 elif len(groups) >= 2:
                     return {
@@ -188,11 +197,11 @@ class LogParser:
                 mig = log["migration"]
                 migrations.append({
                     "timestamp": log.get("timestamp", ""),
-                    "guest_name": mig.get("guest", mig.get("name", "Unknown")),
-                    "from_node": mig.get("from_node", ""),
-                    "to_node": mig.get("to_node", ""),
-                    "status": mig.get("status", "started"),
-                    "type": mig.get("type", "VM")
+                    "guest_name": mig.get("guest", "Unknown"),  # Guest name
+                    "from_node": mig.get("from_node", "-"),     # Source node
+                    "to_node": mig.get("to_node", "-"),         # Destination node
+                    "status": mig.get("status", "started"),     # Migration status
+                    "type": mig.get("type", "VM")               # VM or CT
                 })
         
         return migrations[:limit]
