@@ -15,6 +15,8 @@ services:
       - /etc/proxlb/proxlb.yaml:/etc/proxlb/proxlb.yaml:ro
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Shared temp directory for one-shot ProxLB runs
+      - /tmp:/tmp
     environment:
       - PROXLB_CONFIG=/etc/proxlb/proxlb.yaml
       - PROXLB_CONTAINER=proxlb

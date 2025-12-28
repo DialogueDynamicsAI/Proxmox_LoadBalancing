@@ -39,3 +39,4 @@ RUN touch /app/conf/proxlb.yaml
 
 # Run as non-root using venv Python
 ENTRYPOINT ["/opt/venv/bin/python", "/app/proxlb/main.py"]
+

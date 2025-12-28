@@ -1012,11 +1012,17 @@ async function triggerDryRun() {
             let content = '';
             if (migrations.length > 0) {
                 content += '<div class="results-section"><strong>Planned Migrations (Dry Run):</strong></div>';
-                migrations.forEach(line => {
-                    content += `<div class="log-line migration">📋 ${escapeHtml(line)}</div>`;
+                migrations.forEach(m => {
+                    if (typeof m === 'object' && m.guest) {
+                        content += `<div class="log-line migration">🔄 ${escapeHtml(m.type || 'VM')} <strong>${escapeHtml(m.guest)}</strong>: ${escapeHtml(m.from_node)} → ${escapeHtml(m.to_node)}</div>`;
+                    } else if (typeof m === 'object' && m.message) {
+                        content += `<div class="log-line migration">📋 ${escapeHtml(m.message)}</div>`;
+                    } else {
+                        content += `<div class="log-line migration">📋 ${escapeHtml(String(m))}</div>`;
+                    }
                 });
             } else {
-                content += '<div class="log-line">No migrations would be performed - cluster is balanced.</div>';
+                content += '<div class="log-line">✅ No migrations needed - cluster is balanced.</div>';
             }
             if (output.length > 0) {
                 content += '<div class="results-section" style="margin-top: 1rem;"><strong>Full Output:</strong></div>';

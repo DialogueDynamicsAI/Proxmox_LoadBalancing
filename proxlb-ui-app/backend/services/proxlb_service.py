@@ -109,42 +109,112 @@ class ProxLBService:
     
     def run_once(self, dry_run: bool = False) -> Dict:
         """Run ProxLB once (not as daemon) and capture output"""
-        # Build command - run a one-time balance check
-        args = [
-            "run", "--rm",
-            "-v", f"{self.config_path}:/etc/proxlb/proxlb.yaml:ro",
-            self.image,
-            "-c", "/etc/proxlb/proxlb.yaml"
-        ]
+        import yaml
+        import os
+        import uuid
         
-        if dry_run:
-            args.append("-d")  # Use short flag for dry-run
+        # Use a fixed temp directory and unique filename
+        temp_config_path = f"/tmp/proxlb_oneshot_{uuid.uuid4().hex}.yaml"
         
-        # Use longer timeout for actual balancing which may do migrations
-        timeout = 120 if dry_run else 600
-        result = self._run_docker_cmd(args, timeout=timeout)
+        # Load and modify config to disable daemon mode for one-shot run
+        try:
+            with open(self.config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Disable daemon mode for one-shot execution
+            if 'service' not in config:
+                config['service'] = {}
+            config['service']['daemon'] = False
+            
+            # Write to temp file
+            with open(temp_config_path, 'w') as temp_file:
+                yaml.dump(config, temp_file)
+        except Exception as e:
+            return {"success": False, "error": f"Failed to prepare config: {str(e)}"}
+        
+        try:
+            # Build command - run a one-time balance check
+            args = [
+                "run", "--rm",
+                "-v", f"{temp_config_path}:/etc/proxlb/proxlb.yaml:ro",
+                self.image,
+                "-c", "/etc/proxlb/proxlb.yaml",
+                "-j"  # JSON output for structured data
+            ]
+            
+            if dry_run:
+                args.append("-d")  # Add dry-run flag
+            
+            # Use longer timeout - ProxLB can take 30-60 seconds
+            timeout = 180 if dry_run else 600
+            result = self._run_docker_cmd(args, timeout=timeout)
+        finally:
+            # Clean up temp config
+            try:
+                os.unlink(temp_config_path)
+            except:
+                pass
         
         # Combine stdout and stderr for full output
         full_output = result.stdout + result.stderr
-        
-        # Parse log lines
-        log_lines = []
-        migrations = []
-        for line in full_output.strip().split("\n"):
-            if line.strip():
-                log_lines.append(line)
-                # Detect migration lines
-                if "migrate" in line.lower() or "balancing:" in line.lower():
-                    migrations.append(line)
         
         # Check for timeout
         if "timed out" in full_output.lower():
             return {
                 "success": False,
                 "error": "Operation timed out. Check logs for details.",
-                "output": log_lines,
+                "output": full_output,
                 "dry_run": dry_run
             }
+        
+        # Parse log lines and try to extract JSON
+        log_lines = []
+        json_data = None
+        migrations = []
+        json_started = False
+        json_lines = []
+        
+        for line in full_output.strip().split("\n"):
+            if line.strip():
+                # Detect start of JSON
+                if line.strip().startswith("{"):
+                    json_started = True
+                
+                if json_started:
+                    json_lines.append(line)
+                    # Detect end of JSON (closing brace at start of line)
+                    if line.strip() == "}":
+                        json_started = False
+                else:
+                    log_lines.append(line)
+        
+        # Parse JSON if found
+        if json_lines:
+            try:
+                json_str = "\n".join(json_lines)
+                json_data = json.loads(json_str)
+                
+                # Extract migrations from guests data
+                if "guests" in json_data:
+                    for guest_name, guest_info in json_data["guests"].items():
+                        current = guest_info.get("node_current", "")
+                        target = guest_info.get("node_target", "")
+                        if current and target and current != target:
+                            migrations.append({
+                                "guest": guest_name,
+                                "type": guest_info.get("type", "vm").upper(),
+                                "from_node": current,
+                                "to_node": target
+                            })
+            except json.JSONDecodeError:
+                # JSON parsing failed, continue with log parsing
+                pass
+        
+        # Fallback: parse migrations from log lines
+        if not migrations:
+            for line in log_lines:
+                if "migrate" in line.lower() or "balancing:" in line.lower():
+                    migrations.append({"message": line})
         
         if result.returncode == 0 or "ProxLB" in full_output:
             return {
@@ -152,7 +222,8 @@ class ProxLBService:
                 "dry_run": dry_run,
                 "output": log_lines,
                 "migrations": migrations,
-                "message": f"{'Dry run' if dry_run else 'Balancing'} completed successfully"
+                "nodes": json_data.get("nodes", {}) if json_data else {},
+                "message": f"{'Dry run' if dry_run else 'Balancing'} completed. {len(migrations)} migration(s) {'planned' if dry_run else 'executed'}."
             }
         else:
             return {
