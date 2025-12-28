@@ -224,13 +224,17 @@
             <!-- Nodes Page -->
             <section class="page" id="page-nodes">
                 <header class="page-header">
-                    <h1>Cluster Nodes</h1>
+                    <h1>Cluster <em>Nodes</em></h1>
                     <div class="header-actions">
                         <button class="btn btn-secondary" onclick="refreshNodes()">
                             <span>🔄</span> Refresh
                         </button>
                     </div>
                 </header>
+                
+                <div class="nodes-summary" id="nodes-summary">
+                    <!-- Summary will be populated here -->
+                </div>
 
                 <div class="nodes-container" id="nodes-container">
                     <!-- Node cards will be populated here -->

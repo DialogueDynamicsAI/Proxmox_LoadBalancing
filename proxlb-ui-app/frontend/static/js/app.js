@@ -314,29 +314,142 @@ function updateServiceStatusDisplay(running) {
 
 // ============== Nodes Page ==============
 
+let allNodesData = [];
+let expandedNodes = {};
+
 async function loadNodes() {
     try {
         const data = await apiGet('/nodes');
+        allNodesData = data.nodes || [];
+        
         const container = document.getElementById('nodes-container');
+        const summaryContainer = document.getElementById('nodes-summary');
         
         if (!container) return;
         
-        container.innerHTML = data.nodes.map(node => `
-            <div class="node-card-large ${node.maintenance ? 'maintenance' : ''}" data-node="${node.node}">
-                <div class="node-card-header">
-                    <div class="node-card-title">
-                        <span class="node-icon">🖥️</span>
-                        <h3>${node.node}</h3>
+        // Render summary
+        if (summaryContainer) {
+            const onlineCount = allNodesData.filter(n => n.status === 'online').length;
+            const maintCount = allNodesData.filter(n => n.maintenance).length;
+            const totalVMs = allNodesData.reduce((sum, n) => sum + (n.vm_count || 0), 0);
+            const totalCTs = allNodesData.reduce((sum, n) => sum + (n.ct_count || 0), 0);
+            
+            summaryContainer.innerHTML = `
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <span class="summary-value">${allNodesData.length}</span>
+                        <span class="summary-label">Total Nodes</span>
                     </div>
+                    <div class="summary-stat online">
+                        <span class="summary-value">${onlineCount}</span>
+                        <span class="summary-label">Online</span>
+                    </div>
+                    <div class="summary-stat maintenance">
+                        <span class="summary-value">${maintCount}</span>
+                        <span class="summary-label">In Maintenance</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value">${totalVMs}</span>
+                        <span class="summary-label">Total VMs</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value">${totalCTs}</span>
+                        <span class="summary-label">Total Containers</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Render node cards
+        container.innerHTML = allNodesData.map(node => {
+            const isExpanded = expandedNodes[node.node] || false;
+            return renderNodeCard(node, isExpanded);
+        }).join('');
+        
+    } catch (error) {
+        showToast('Failed to load nodes', 'error');
+    }
+}
+
+function renderNodeCard(node, isExpanded) {
+    const uptime = node.uptime ? formatUptime(node.uptime) : 'Unknown';
+    
+    return `
+        <div class="node-card-large ${node.maintenance ? 'maintenance' : ''} ${isExpanded ? 'expanded' : ''}" 
+             data-node="${node.node}">
+            <div class="node-card-header" onclick="toggleNodeExpand('${node.node}')">
+                <div class="node-card-title">
+                    <span class="node-icon">🖥️</span>
+                    <div class="node-title-info">
+                        <h3>${node.node}</h3>
+                        <span class="node-subtitle">💻 ${node.vm_count} VMs · 📦 ${node.ct_count} CTs</span>
+                    </div>
+                </div>
+                <div class="node-header-right">
                     <span class="node-status ${node.maintenance ? 'maintenance' : node.status}">
                         ${node.maintenance ? '🔧 Maintenance' : node.status === 'online' ? '✓ Online' : '✗ Offline'}
                     </span>
+                    <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
                 </div>
-                <div class="node-card-body">
+            </div>
+            
+            <div class="node-card-preview">
+                <div class="preview-stats">
+                    <div class="preview-stat">
+                        <span class="preview-label">CPU</span>
+                        <div class="mini-bar">
+                            <div class="mini-bar-fill ${getBarClass(node.cpu)}" style="width: ${node.cpu}%"></div>
+                        </div>
+                        <span class="preview-value">${node.cpu.toFixed(1)}%</span>
+                    </div>
+                    <div class="preview-stat">
+                        <span class="preview-label">MEM</span>
+                        <div class="mini-bar">
+                            <div class="mini-bar-fill ${getBarClass(node.mem_percent)}" style="width: ${node.mem_percent}%"></div>
+                        </div>
+                        <span class="preview-value">${node.mem_percent.toFixed(1)}%</span>
+                    </div>
+                    <div class="preview-stat">
+                        <span class="preview-label">DISK</span>
+                        <div class="mini-bar">
+                            <div class="mini-bar-fill ${getBarClass(node.disk_percent)}" style="width: ${node.disk_percent}%"></div>
+                        </div>
+                        <span class="preview-value">${node.disk_percent.toFixed(1)}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="node-card-details" style="display: ${isExpanded ? 'block' : 'none'};">
+                <!-- System Info -->
+                <div class="detail-section">
+                    <h4>System Information</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Uptime</span>
+                            <span class="detail-value">${uptime}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">CPU Cores</span>
+                            <span class="detail-value">${node.maxcpu || '-'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Total Memory</span>
+                            <span class="detail-value">${formatBytes(node.maxmem)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Total Disk</span>
+                            <span class="detail-value">${formatBytes(node.maxdisk)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resource Details -->
+                <div class="detail-section">
+                    <h4>Resource Usage</h4>
                     <div class="resource-bars">
                         <div class="resource-bar">
                             <div class="resource-bar-header">
-                                <span class="resource-bar-label">CPU</span>
+                                <span class="resource-bar-label">🔲 CPU</span>
                                 <span class="resource-bar-value">${node.cpu.toFixed(1)}% (${node.maxcpu} cores)</span>
                             </div>
                             <div class="bar-container">
@@ -345,7 +458,7 @@ async function loadNodes() {
                         </div>
                         <div class="resource-bar">
                             <div class="resource-bar-header">
-                                <span class="resource-bar-label">Memory</span>
+                                <span class="resource-bar-label">💾 Memory</span>
                                 <span class="resource-bar-value">${node.mem_percent.toFixed(1)}% (${formatBytes(node.mem)} / ${formatBytes(node.maxmem)})</span>
                             </div>
                             <div class="bar-container">
@@ -354,7 +467,7 @@ async function loadNodes() {
                         </div>
                         <div class="resource-bar">
                             <div class="resource-bar-header">
-                                <span class="resource-bar-label">Disk</span>
+                                <span class="resource-bar-label">💽 Disk</span>
                                 <span class="resource-bar-value">${node.disk_percent.toFixed(1)}% (${formatBytes(node.disk)} / ${formatBytes(node.maxdisk)})</span>
                             </div>
                             <div class="bar-container">
@@ -363,23 +476,98 @@ async function loadNodes() {
                         </div>
                     </div>
                 </div>
-                <div class="node-card-footer">
-                    <div class="guest-counts">
-                        <span class="guest-count">💻 ${node.vm_count} VMs</span>
-                        <span class="guest-count">📦 ${node.ct_count} CTs</span>
+                
+                <!-- Guest Summary -->
+                <div class="detail-section">
+                    <h4>Guest Summary</h4>
+                    <div class="guest-summary-grid">
+                        <div class="guest-summary-item vms">
+                            <span class="guest-summary-icon">💻</span>
+                            <div class="guest-summary-info">
+                                <span class="guest-summary-count">${node.vm_count || 0}</span>
+                                <span class="guest-summary-label">Virtual Machines</span>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="viewNodeGuests('${node.node}', 'qemu')">
+                                View VMs
+                            </button>
+                        </div>
+                        <div class="guest-summary-item containers">
+                            <span class="guest-summary-icon">📦</span>
+                            <div class="guest-summary-info">
+                                <span class="guest-summary-count">${node.ct_count || 0}</span>
+                                <span class="guest-summary-label">Containers</span>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="viewNodeGuests('${node.node}', 'lxc')">
+                                View CTs
+                            </button>
+                        </div>
                     </div>
-                    <div class="node-actions">
-                        <button class="btn btn-sm ${node.maintenance ? 'btn-success' : 'btn-warning'}" 
-                                onclick="toggleMaintenance('${node.node}', ${!node.maintenance})">
-                            ${node.maintenance ? 'Exit Maintenance' : 'Enter Maintenance'}
+                </div>
+                
+                <!-- Actions -->
+                <div class="detail-section">
+                    <h4>Node Actions</h4>
+                    <div class="node-action-buttons">
+                        <button class="btn ${node.maintenance ? 'btn-success' : 'btn-warning'}" 
+                                onclick="event.stopPropagation(); toggleMaintenance('${node.node}', ${!node.maintenance})">
+                            ${node.maintenance ? '✓ Exit Maintenance Mode' : '🔧 Enter Maintenance Mode'}
+                        </button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); viewNodeGuests('${node.node}', 'all')">
+                            👁️ View All Guests
                         </button>
                     </div>
                 </div>
             </div>
-        `).join('');
+        </div>
+    `;
+}
+
+function toggleNodeExpand(nodeName) {
+    expandedNodes[nodeName] = !expandedNodes[nodeName];
+    
+    // Re-render just that node card
+    const card = document.querySelector(`.node-card-large[data-node="${nodeName}"]`);
+    if (card) {
+        const node = allNodesData.find(n => n.node === nodeName);
+        if (node) {
+            card.outerHTML = renderNodeCard(node, expandedNodes[nodeName]);
+        }
+    }
+}
+
+function viewNodeGuests(nodeName, type) {
+    // Navigate to guests page with node filter
+    navigateTo('guests');
+    
+    // Set node filter
+    setTimeout(() => {
+        const nodeFilter = document.getElementById('guest-node-filter');
+        if (nodeFilter) {
+            nodeFilter.value = nodeName;
+        }
         
-    } catch (error) {
-        showToast('Failed to load nodes', 'error');
+        // Set type filter if specified
+        if (type !== 'all') {
+            setTypeFilter(type);
+        } else {
+            setTypeFilter('all');
+        }
+        
+        filterGuests();
+    }, 100);
+}
+
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+        return `${days}d ${hours}h ${mins}m`;
+    } else if (hours > 0) {
+        return `${hours}h ${mins}m`;
+    } else {
+        return `${mins}m`;
     }
 }
 
