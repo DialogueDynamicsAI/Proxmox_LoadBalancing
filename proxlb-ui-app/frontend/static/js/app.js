@@ -1625,7 +1625,7 @@ async function loadTasks() {
     }
 }
 
-async function loadMigrations() {
+async function loadMigrationsTable() {
     try {
         const data = await apiGet('/migrations?limit=50');
         migrationsData = data.migrations || [];
@@ -1805,7 +1805,7 @@ function switchLogTab(tab) {
             loadTasks();
             break;
         case 'migrations':
-            loadMigrations();
+            loadMigrationsTable();
             break;
     }
 }
@@ -1839,7 +1839,7 @@ function refreshLogs() {
             loadTasks();
             break;
         case 'migrations':
-            loadMigrations();
+            loadMigrationsTable();
             break;
     }
     showToast('Logs refreshed', 'info');
