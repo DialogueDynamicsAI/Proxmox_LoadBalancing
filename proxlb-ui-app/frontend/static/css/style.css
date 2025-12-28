@@ -3618,3 +3618,159 @@ tr.running td {
 .status-inactive {
     color: #64748b !important;
 }
+
+/* User Profile in Sidebar */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 8px;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.user-profile:hover {
+    background: rgba(51, 65, 85, 0.8);
+}
+
+.user-avatar-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 14px;
+}
+
+.user-info-sm {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name-sm {
+    font-weight: 600;
+    color: #f1f5f9;
+    font-size: 0.9rem;
+}
+
+.user-role-sm {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: capitalize;
+}
+
+.user-menu-trigger {
+    color: #64748b;
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.user-profile:hover .user-menu-trigger {
+    color: #94a3b8;
+}
+
+/* User Menu Dropdown */
+.user-menu-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 12px;
+    right: 12px;
+    background: #1e293b;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 8px;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.user-menu-dropdown a {
+    display: block;
+    padding: 10px 16px;
+    color: #f1f5f9;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.user-menu-dropdown a:hover {
+    background: rgba(71, 85, 105, 0.5);
+}
+
+.user-menu-dropdown hr {
+    border: none;
+    border-top: 1px solid rgba(71, 85, 105, 0.5);
+    margin: 8px 0;
+}
+
+.user-menu-dropdown .logout-link {
+    color: #f87171;
+}
+
+.user-menu-dropdown .logout-link:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.sidebar-footer {
+    position: relative;
+}
+
+/* 2FA Setup Styles */
+.twofa-setup, .twofa-status {
+    text-align: center;
+}
+
+.qr-container {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    display: inline-block;
+    margin: 16px 0;
+}
+
+.qr-container img {
+    display: block;
+}
+
+.secret-code {
+    display: block;
+    background: rgba(30, 41, 59, 0.8);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: #06b6d4;
+    margin: 12px auto;
+    max-width: 300px;
+    word-break: break-all;
+}
+
+.backup-codes {
+    text-align: center;
+}
+
+.codes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.codes-grid code {
+    background: rgba(30, 41, 59, 0.8);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #10b981;
+}

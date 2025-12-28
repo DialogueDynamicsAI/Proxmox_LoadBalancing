@@ -3128,3 +3128,244 @@ function copyPassword(password) {
         showToast('Failed to copy password', 'error');
     });
 }
+
+// ============== User Profile Functions ==============
+
+function updateUserProfileDisplay() {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    const avatar = document.getElementById('user-avatar');
+    const name = document.getElementById('user-display-name');
+    const role = document.getElementById('user-display-role');
+    
+    if (avatar) {
+        avatar.textContent = (user.full_name || user.username).charAt(0).toUpperCase();
+    }
+    if (name) {
+        name.textContent = user.full_name || user.username;
+    }
+    if (role) {
+        role.textContent = user.role;
+    }
+}
+
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu-dropdown');
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    const profile = document.getElementById('user-profile');
+    const menu = document.getElementById('user-menu-dropdown');
+    if (menu && profile && !profile.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
+
+function showChangePasswordModal() {
+    toggleUserMenu();
+    const content = `
+        <form id="change-password-form" onsubmit="changePassword(event)">
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-input" name="current_password" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-input" name="new_password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-input" name="confirm_password" required minlength="6">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </div>
+        </form>
+    `;
+    showResultsModal('Change Password', 'info', '', content);
+}
+
+async function changePassword(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const currentPassword = formData.get('current_password');
+    const newPassword = formData.get('new_password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    if (newPassword !== confirmPassword) {
+        showToast('New passwords do not match', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to change password');
+        }
+        
+        closeResultsModal();
+        showToast('Password changed successfully', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+function show2FASetupModal() {
+    toggleUserMenu();
+    const user = getCurrentUser();
+    
+    if (user?.totp_enabled) {
+        // Already enabled - show disable option
+        const content = `
+            <div class="twofa-status">
+                <p class="success-text">🔐 Two-Factor Authentication is enabled</p>
+                <p>To disable 2FA, enter your password:</p>
+                <form id="disable-2fa-form" onsubmit="disable2FA(event)">
+                    <div class="form-group">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-input" name="current_password" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Disable 2FA</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        showResultsModal('Two-Factor Authentication', 'info', '', content);
+    } else {
+        // Not enabled - start setup
+        start2FASetup();
+    }
+}
+
+async function start2FASetup() {
+    try {
+        showToast('Setting up 2FA...', 'info');
+        
+        const response = await fetch('/api/auth/2fa/setup', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to setup 2FA');
+        }
+        
+        const data = await response.json();
+        
+        const content = `
+            <div class="twofa-setup">
+                <p>Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+                <div class="qr-container">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_uri)}" alt="2FA QR Code">
+                </div>
+                <p class="muted-text">Or enter this secret manually:</p>
+                <code class="secret-code">${data.secret}</code>
+                <form id="verify-2fa-form" onsubmit="verify2FASetup(event)">
+                    <div class="form-group">
+                        <label class="form-label">Enter the 6-digit code from your app:</label>
+                        <input type="text" class="form-input" name="token" required pattern="[0-9]{6}" maxlength="6" placeholder="000000" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Verify & Enable</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        showResultsModal('Setup Two-Factor Authentication', 'info', '', content);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function verify2FASetup(event) {
+    event.preventDefault();
+    const form = event.target;
+    const token = new FormData(form).get('token');
+    
+    try {
+        const response = await fetch('/api/auth/2fa/enable', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ token })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Invalid code');
+        }
+        
+        const data = await response.json();
+        
+        // Show backup codes
+        const content = `
+            <div class="backup-codes">
+                <p class="success-text">✅ 2FA has been enabled!</p>
+                <p class="warning-text">⚠️ Save these backup codes securely. They can only be shown once!</p>
+                <div class="codes-grid">
+                    ${data.backup_codes.map(code => `<code>${code}</code>`).join('')}
+                </div>
+                <button class="btn btn-primary" onclick="closeResultsModal(); location.reload();">Done</button>
+            </div>
+        `;
+        
+        showResultsModal('2FA Enabled', 'success', '', content);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function disable2FA(event) {
+    event.preventDefault();
+    const form = event.target;
+    const password = new FormData(form).get('current_password');
+    
+    try {
+        const response = await fetch('/api/auth/2fa/disable', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: password,
+                new_password: ''  // Not used but required by model
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to disable 2FA');
+        }
+        
+        closeResultsModal();
+        showToast('2FA has been disabled', 'success');
+        location.reload();
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// Initialize user profile on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initAuth();
+    updateUserProfileDisplay();
+});

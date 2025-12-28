@@ -4,12 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=24">
+    <link rel="stylesheet" href="/static/css/style.css?v=25">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <script>
+        // Check authentication on page load
+        (function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            }
+        })();
+    </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
@@ -93,6 +102,30 @@
                 <div class="service-status" id="service-status">
                     <span class="status-dot"></span>
                     <span class="status-text">Checking...</span>
+                </div>
+                
+                <!-- User Profile -->
+                <div class="user-profile" id="user-profile">
+                    <div class="user-avatar-sm" id="user-avatar">?</div>
+                    <div class="user-info-sm">
+                        <span class="user-name-sm" id="user-display-name">Loading...</span>
+                        <span class="user-role-sm" id="user-display-role">-</span>
+                    </div>
+                    <div class="user-menu-trigger" onclick="toggleUserMenu()">▼</div>
+                </div>
+                
+                <!-- User Menu Dropdown -->
+                <div class="user-menu-dropdown" id="user-menu-dropdown" style="display: none;">
+                    <a href="#" onclick="showChangePasswordModal(); return false;">
+                        🔑 Change Password
+                    </a>
+                    <a href="#" onclick="show2FASetupModal(); return false;">
+                        🔐 Setup 2FA
+                    </a>
+                    <hr>
+                    <a href="#" onclick="logout(); return false;" class="logout-link">
+                        🚪 Logout
+                    </a>
                 </div>
             </div>
         </aside>
@@ -1121,8 +1154,8 @@
         </div>
     </div>
 
-    <script src="/static/js/auth.js?v=24"></script>
-    <script src="/static/js/app.js?v=24"></script>
+    <script src="/static/js/auth.js?v=25"></script>
+    <script src="/static/js/app.js?v=25"></script>
 </body>
 </html>
 
