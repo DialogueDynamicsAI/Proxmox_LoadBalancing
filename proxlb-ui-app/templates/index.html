@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=16">
+    <link rel="stylesheet" href="/static/css/style.css?v=21">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -82,6 +82,10 @@
                 <a href="#" class="nav-item" data-page="users" data-role="admin">
                     <span class="nav-icon">👥</span>
                     <span class="nav-label">Users</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings" data-role="admin">
+                    <span class="nav-icon">🔧</span>
+                    <span class="nav-label">Settings</span>
                 </a>
             </nav>
             
@@ -883,6 +887,118 @@
                 </div>
             </section>
 
+
+            <!-- Settings Section (Admin Only) -->
+            <section class="page" id="page-settings">
+                <div class="section-header">
+                    <h1>System <em>Settings</em></h1>
+                </div>
+                
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-settings-tab="smtp" onclick="showSettingsTab('smtp')">
+                        📧 SMTP / Email
+                    </button>
+                    <button class="settings-tab" data-settings-tab="security" onclick="showSettingsTab('security')">
+                        🔒 Security
+                    </button>
+                </div>
+                
+                <!-- SMTP Settings Tab -->
+                <div class="settings-tab-content active" id="settings-smtp">
+                    <div class="card">
+                        <h3>📧 SMTP Relay Configuration</h3>
+                        <p class="card-description">Configure email settings for password resets and notifications.</p>
+                        
+                        <form id="smtp-form" onsubmit="saveSMTPSettings(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>SMTP Host</label>
+                                    <input type="text" class="form-input" id="smtp-host" placeholder="smtp.example.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Port</label>
+                                    <input type="number" class="form-input" id="smtp-port" value="587">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Username</label>
+                                    <input type="text" class="form-input" id="smtp-username" placeholder="username@example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" class="form-input" id="smtp-password" placeholder="Enter password">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>From Email Address</label>
+                                <input type="email" class="form-input" id="smtp-from" placeholder="noreply@example.com" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group checkbox-group">
+                                    <label>
+                                        <input type="checkbox" id="smtp-tls" checked>
+                                        Use TLS (STARTTLS)
+                                    </label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <label>
+                                        <input type="checkbox" id="smtp-ssl">
+                                        Use SSL (Direct)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Test Email Section -->
+                            <div class="test-email-section">
+                                <label>Test Email Address</label>
+                                <div class="test-email-row">
+                                    <input type="email" class="form-input" id="smtp-test-email" placeholder="Enter email to send test to...">
+                                    <button type="button" class="btn btn-secondary" onclick="sendTestEmail()">
+                                        ✉️ Send Test
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="testSMTPConnection()">
+                                    🔌 Test Connection
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    💾 Save Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Security Settings Tab -->
+                <div class="settings-tab-content" id="settings-security">
+                    <div class="card">
+                        <h3>🔒 Security Settings</h3>
+                        <p class="card-description">Configure security options for your installation.</p>
+                        
+                        <div class="security-info">
+                            <div class="info-item">
+                                <span class="label">JWT Token Expiry:</span>
+                                <span class="value">24 hours</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Password Hashing:</span>
+                                <span class="value">bcrypt</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">2FA Support:</span>
+                                <span class="value">TOTP (Time-based One-Time Password)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Users Section (Admin Only) -->
             <section class="page" id="page-users">
                 <div class="section-header">
@@ -937,8 +1053,8 @@
         </div>
     </div>
 
-    <script src="/static/js/auth.js?v=16"></script>
-    <script src="/static/js/app.js?v=17"></script>
+    <script src="/static/js/auth.js?v=21"></script>
+    <script src="/static/js/app.js?v=21"></script>
 </body>
 </html>
 

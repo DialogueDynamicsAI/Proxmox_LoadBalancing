@@ -213,6 +213,22 @@
         }
 
         /* Loading spinner */
+        .forgot-password {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .forgot-password a {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .forgot-password a:hover {
+            color: var(--accent-primary);
+        }
+
         .spinner {
             display: inline-block;
             width: 18px;
@@ -280,9 +296,13 @@
                 <button type="submit" class="login-btn" id="login-btn">
                     Sign In
                 </button>
+                
+                <div class="forgot-password">
+                    <a href="#" onclick="showForgotPassword(); return false;">Forgot your password?</a>
+                </div>
             </form>
 
-            <div class="version">v2.0.0</div>
+            <div class="version">v2.1.0</div>
         </div>
     </div>
 
@@ -332,6 +352,52 @@
                 loginBtn.innerHTML = 'Sign In';
             }
         });
+
+        // Forgot password
+        function showForgotPassword() {
+            const html = `
+                <div class="forgot-form">
+                    <h3>Reset Password</h3>
+                    <p>Enter your email address and we'll send you a link to reset your password.</p>
+                    <form onsubmit="submitForgotPassword(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="reset-email">Email</label>
+                            <input type="email" id="reset-email" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                        <button type="submit" class="login-btn">Send Reset Link</button>
+                        <div class="forgot-password">
+                            <a href="#" onclick="hideForgotPassword(); return false;">Back to login</a>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('login-form').insertAdjacentHTML('afterend', html);
+        }
+
+        function hideForgotPassword() {
+            const forgotForm = document.querySelector('.forgot-form');
+            if (forgotForm) forgotForm.remove();
+            document.getElementById('login-form').style.display = 'block';
+        }
+
+        async function submitForgotPassword(event) {
+            event.preventDefault();
+            const email = document.getElementById('reset-email').value;
+            
+            try {
+                const response = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                alert('If an account with that email exists, a password reset link has been sent.');
+                hideForgotPassword();
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+            }
+        }
 
         // Check if already logged in
         async function checkAuth() {

@@ -40,6 +40,11 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
     
+    # 2FA fields
+    totp_secret = Column(String(32), nullable=True)
+    totp_enabled = Column(Boolean, default=False)
+    backup_codes = Column(String(500), nullable=True)  # JSON array of hashed backup codes
+    
     def verify_password(self, plain_password: str) -> bool:
         """Verify a password against the hash"""
         return pwd_context.verify(plain_password, self.hashed_password)
@@ -59,5 +64,6 @@ class User(Base):
             "role": self.role,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_login": self.last_login.isoformat() if self.last_login else None
+            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "totp_enabled": self.totp_enabled or False
         }

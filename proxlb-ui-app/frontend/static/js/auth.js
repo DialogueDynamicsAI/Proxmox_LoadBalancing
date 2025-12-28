@@ -148,6 +148,11 @@ async function requireAuth() {
 function applyRoleBasedUI() {
     const role = getUserRole();
     
+    // Update profile display
+    if (typeof updateUserProfileDisplay === 'function') {
+        updateUserProfileDisplay();
+    }
+    
     // Elements only visible to admin
     document.querySelectorAll('[data-role="admin"]').forEach(el => {
         el.style.display = isAdmin() ? '' : 'none';

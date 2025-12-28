@@ -26,7 +26,7 @@ from services.log_parser import LogParser
 
 # Import auth modules
 from database import get_db, init_db, SessionLocal
-from auth.routes import router as auth_router, users_router
+from auth.routes import router as auth_router, users_router, smtp_router
 from auth.dependencies import require_auth, require_role, get_current_user
 from auth.models import User, UserRole
 
@@ -137,6 +137,7 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 # Include auth routers
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(smtp_router)
 
 
 def load_config() -> Optional[Dict]:
@@ -374,7 +375,7 @@ async def update_balancing_settings(settings: BalancingSettings, user: User = De
 
 
 @app.post("/api/balancing/trigger")
-async def trigger_rebalance(dry_run: bool = False):
+async def trigger_rebalance(dry_run: bool = False, user: User = Depends(require_role(["admin", "tech"]))):
     """Trigger a manual rebalance"""
     if not proxlb_service:
         raise HTTPException(status_code=503, detail="ProxLB service not available")
@@ -387,7 +388,7 @@ async def trigger_rebalance(dry_run: bool = False):
 
 
 @app.get("/api/balancing/best-node")
-async def get_best_node():
+async def get_best_node(user: User = Depends(require_role(["admin", "tech"]))):
     """Get the best node for new VM placement"""
     if not proxlb_service:
         raise HTTPException(status_code=503, detail="ProxLB service not available")

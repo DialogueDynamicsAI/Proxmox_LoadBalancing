@@ -79,6 +79,9 @@ function navigateTo(page) {
         case 'users':
             loadUsers();
             break;
+        case 'settings':
+            loadSettings();
+            break;
     }
 }
 
@@ -2461,3 +2464,436 @@ async function deleteUser(userId, username) {
         showToast(`Failed to delete user: ${error.message}`, 'error');
     }
 }
+
+// ============ User Profile Functions ============
+
+function toggleProfileMenu() {
+    const dropdown = document.getElementById('profile-dropdown');
+    dropdown.classList.toggle('show');
+    
+    // Close on click outside
+    const closeHandler = (e) => {
+        if (!e.target.closest('.user-profile-section')) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+}
+
+function updateUserProfileDisplay() {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    const avatarEl = document.getElementById('user-avatar');
+    const nameEl = document.getElementById('sidebar-user-name');
+    const roleEl = document.getElementById('sidebar-user-role');
+    
+    if (avatarEl) avatarEl.textContent = (user.full_name || user.username).charAt(0).toUpperCase();
+    if (nameEl) nameEl.textContent = user.full_name || user.username;
+    if (roleEl) roleEl.textContent = user.role;
+}
+
+function showProfileModal() {
+    const user = getCurrentUser();
+    if (!user) return;
+    
+    const content = `
+        <form id="profile-form" onsubmit="saveProfile(event)">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-input" value="${user.username}" disabled>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" name="full_name" value="${user.full_name || ''}" placeholder="Your full name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" name="email" value="${user.email || ''}" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                <input type="text" class="form-input" value="${user.role}" disabled>
+            </div>
+            <div class="form-group">
+                <label class="form-label">2FA Status</label>
+                <input type="text" class="form-input" value="${user.totp_enabled ? 'Enabled ✓' : 'Disabled'}" disabled>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    `;
+    
+    showResultsModal('My Profile', 'info', '', content);
+}
+
+async function saveProfile(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                full_name: formData.get('full_name'),
+                email: formData.get('email')
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update profile');
+        
+        const data = await response.json();
+        localStorage.setItem('user', JSON.stringify(data.user));
+        initAuth();
+        updateUserProfileDisplay();
+        closeResultsModal();
+        showToast('Profile updated successfully', 'success');
+    } catch (error) {
+        showToast('Failed to update profile: ' + error.message, 'error');
+    }
+}
+
+function showChangePasswordModal() {
+    const content = `
+        <form id="change-password-form" onsubmit="changePassword(event)">
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-input" name="current_password" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-input" name="new_password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-input" name="confirm_password" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </div>
+        </form>
+    `;
+    
+    showResultsModal('Change Password', 'info', '', content);
+}
+
+async function changePassword(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    if (formData.get('new_password') !== formData.get('confirm_password')) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: formData.get('current_password'),
+                new_password: formData.get('new_password')
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to change password');
+        }
+        
+        closeResultsModal();
+        showToast('Password changed successfully', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// ============ 2FA Functions ============
+
+async function show2FAModal() {
+    const user = getCurrentUser();
+    
+    if (user.totp_enabled) {
+        // Show disable 2FA option
+        const content = `
+            <div class="twofa-status">
+                <div class="twofa-enabled">
+                    <span class="status-icon">✓</span>
+                    <h4>Two-Factor Authentication is Enabled</h4>
+                    <p>Your account is protected with TOTP authentication.</p>
+                </div>
+                <form onsubmit="disable2FA(event)">
+                    <div class="form-group">
+                        <label class="form-label">Enter your password to disable 2FA</label>
+                        <input type="password" class="form-input" name="password" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Disable 2FA</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        showResultsModal('Two-Factor Authentication', 'info', '', content);
+    } else {
+        // Show setup 2FA
+        await setup2FA();
+    }
+}
+
+async function setup2FA() {
+    showResultsModal('Two-Factor Authentication', 'loading', 'Generating secret...', '');
+    
+    try {
+        const response = await fetch('/api/auth/2fa/setup', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) throw new Error('Failed to setup 2FA');
+        
+        const data = await response.json();
+        
+        const content = `
+            <div class="twofa-setup">
+                <p>Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
+                <div class="qr-placeholder" id="qr-code">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qr_uri)}" alt="2FA QR Code">
+                </div>
+                <div class="secret-key">
+                    <label>Or enter this secret manually:</label>
+                    <code>${data.secret}</code>
+                </div>
+                <form onsubmit="verify2FASetup(event)">
+                    <div class="form-group">
+                        <label class="form-label">Enter the 6-digit code from your app</label>
+                        <input type="text" class="form-input" name="token" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Verify & Enable</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        showResultsModal('Setup Two-Factor Authentication', 'info', '', content);
+    } catch (error) {
+        showResultsModal('Error', 'error', 'Failed to setup 2FA', error.message);
+    }
+}
+
+async function verify2FASetup(event) {
+    event.preventDefault();
+    const form = event.target;
+    const token = form.token.value;
+    
+    try {
+        const response = await fetch('/api/auth/2fa/enable', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ token })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Invalid code');
+        }
+        
+        const data = await response.json();
+        
+        // Show backup codes
+        const backupCodesHtml = data.backup_codes.map(code => 
+            `<code class="backup-code">${code}</code>`
+        ).join('');
+        
+        const content = `
+            <div class="twofa-success">
+                <div class="success-icon">✓</div>
+                <h4>2FA Enabled Successfully!</h4>
+                <p><strong>Important:</strong> Save these backup codes in a secure place.</p>
+                <p>You can use these codes to access your account if you lose your authenticator.</p>
+                <div class="backup-codes-grid">
+                    ${backupCodesHtml}
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="closeResultsModal(); location.reload();">Done</button>
+                </div>
+            </div>
+        `;
+        
+        showResultsModal('2FA Enabled', 'success', '', content);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function disable2FA(event) {
+    event.preventDefault();
+    const form = event.target;
+    const password = form.password.value;
+    
+    try {
+        const response = await fetch('/api/auth/2fa/disable', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: password,
+                new_password: ''  // Required by the endpoint but not used
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to disable 2FA');
+        }
+        
+        closeResultsModal();
+        showToast('2FA disabled successfully', 'success');
+        location.reload();
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+// ============ Settings Functions ============
+
+function showSettingsTab(tabName) {
+    // Update tabs
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.settingsTab === tabName);
+    });
+    
+    // Update content
+    document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `settings-${tabName}`);
+    });
+}
+
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/smtp', { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.configured && data.config) {
+            document.getElementById('smtp-host').value = data.config.host || '';
+            document.getElementById('smtp-port').value = data.config.port || 587;
+            document.getElementById('smtp-username').value = data.config.username || '';
+            document.getElementById('smtp-password').value = data.config.password || '';
+            document.getElementById('smtp-from').value = data.config.from_email || '';
+            document.getElementById('smtp-tls').checked = data.config.use_tls !== false;
+            document.getElementById('smtp-ssl').checked = data.config.use_ssl === true;
+        }
+    } catch (error) {
+        console.error('Failed to load SMTP settings:', error);
+    }
+}
+
+function getSMTPConfig() {
+    return {
+        host: document.getElementById('smtp-host').value,
+        port: parseInt(document.getElementById('smtp-port').value),
+        username: document.getElementById('smtp-username').value,
+        password: document.getElementById('smtp-password').value,
+        from_email: document.getElementById('smtp-from').value,
+        use_tls: document.getElementById('smtp-tls').checked,
+        use_ssl: document.getElementById('smtp-ssl').checked
+    };
+}
+
+async function saveSMTPSettings(event) {
+    event.preventDefault();
+    
+    try {
+        const response = await fetch('/api/smtp', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(getSMTPConfig())
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save');
+        }
+        
+        showToast('SMTP settings saved successfully', 'success');
+    } catch (error) {
+        showToast('Failed to save SMTP settings: ' + error.message, 'error');
+    }
+}
+
+async function testSMTPConnection() {
+    showToast('Testing SMTP connection...', 'info');
+    
+    try {
+        const response = await fetch('/api/smtp/test', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(getSMTPConfig())
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Connection failed');
+        }
+        
+        showToast('SMTP connection successful!', 'success');
+    } catch (error) {
+        showToast('Connection failed: ' + error.message, 'error');
+    }
+}
+
+async function sendTestEmail() {
+    const emailInput = document.getElementById('smtp-test-email');
+    const email = emailInput ? emailInput.value.trim() : '';
+    
+    if (!email) {
+        showToast('Please enter an email address first', 'warning');
+        if (emailInput) emailInput.focus();
+        return;
+    }
+    
+    showToast('Sending test email...', 'info');
+    
+    try {
+        const response = await fetch('/api/smtp/send-test', {
+            method: 'POST',
+            headers: { 
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ to_email: email })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to send');
+        }
+        
+        showToast('Test email sent to ' + email + '!', 'success');
+    } catch (error) {
+        showToast('Failed to send test email: ' + error.message, 'error');
+    }
+}
+
+// Update showSection to include settings
+(function() {
+    const originalShowSection = window.showSection;
+    if (originalShowSection) {
+        window.showSection = function(section) {
+            originalShowSection(section);
+            if (section === 'settings') {
+                loadSettings();
+            }
+        };
+    }
+})();
