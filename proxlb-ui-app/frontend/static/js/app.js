@@ -2404,30 +2404,41 @@ async function showEditUserModal(userId) {
                 <div class="admin-actions-section">
                     <h4>🔧 Admin Actions</h4>
                     
+                    ${user.totp_enabled ? `
                     <div class="admin-action-row">
                         <div class="action-info">
                             <span class="action-label">Two-Factor Authentication</span>
-                            <span class="action-status ${user.totp_enabled ? 'enabled' : 'disabled'}">
-                                ${user.totp_enabled ? '🔐 Enabled' : '🔓 Disabled'}
-                            </span>
+                            <span class="action-status enabled">🔐 Enabled</span>
                         </div>
                         <div class="action-buttons">
-                            ${user.totp_enabled 
-                                ? `<button type="button" class="btn btn-sm btn-warning" onclick="resetUser2FA(${user.id}, '${user.username}')">🔄 Reset 2FA</button>` 
-                                : `<button type="button" class="btn btn-sm btn-primary" onclick="requireUser2FA(${user.id}, '${user.username}', true)">📋 Require on Next Login</button>`
-                            }
+                            <button type="button" class="btn btn-sm btn-warning" onclick="resetUser2FA(${user.id}, '${user.username}')">🔄 Reset 2FA</button>
                         </div>
                     </div>
-                    
-                    ${!user.totp_enabled && user.require_2fa_setup ? `
+                    ` : user.require_2fa_setup ? `
                     <div class="admin-action-row pending-2fa">
                         <div class="action-info">
-                            <span class="action-label">⏳ 2FA Setup Pending</span>
-                            <span class="action-desc">User will be prompted to setup 2FA on next login</span>
+                            <span class="action-label">Two-Factor Authentication</span>
+                            <span class="action-status pending">⏳ Pending Setup</span>
                         </div>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="requireUser2FA(${user.id}, '${user.username}', false)">Cancel Requirement</button>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="requireUser2FA(${user.id}, '${user.username}', false)">Cancel Requirement</button>
+                        </div>
                     </div>
-                    ` : ''}
+                    <div class="admin-action-info">
+                        <span class="info-icon">ℹ️</span>
+                        <span>User will be prompted to setup 2FA on next login</span>
+                    </div>
+                    ` : `
+                    <div class="admin-action-row">
+                        <div class="action-info">
+                            <span class="action-label">Two-Factor Authentication</span>
+                            <span class="action-status disabled">🔓 Disabled</span>
+                        </div>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="requireUser2FA(${user.id}, '${user.username}', true)">📋 Require on Next Login</button>
+                        </div>
+                    </div>
+                    `}
                     
                     <div class="admin-action-row">
                         <div class="action-info">
