@@ -530,7 +530,7 @@
                 <!-- Log Tabs -->
                 <div class="log-tabs">
                     <button class="log-tab active" data-tab="proxlb" onclick="switchLogTab('proxlb')">
-                        📋 ProxLB Logs
+                        📋 Proxmox LB Logs
                     </button>
                     <button class="log-tab" data-tab="tasks" onclick="switchLogTab('tasks')">
                         ⚡ Cluster Tasks
@@ -646,13 +646,13 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>🔌 Proxmox API Connection</h3>
-                            <span class="info-icon" title="Configure how ProxLB connects to your Proxmox cluster API">ℹ️</span>
+                            <span class="info-icon" title="Configure how Proxmox LB connects to your Proxmox cluster API">ℹ️</span>
                         </div>
                         <div class="card-body">
-                            <p class="section-desc">Connection settings for the Proxmox VE API. ProxLB uses this to monitor resources and migrate VMs.</p>
+                            <p class="section-desc">Connection settings for the Proxmox VE API. Proxmox LB uses this to monitor resources and migrate VMs.</p>
                             <form class="settings-form" id="api-config-form">
                                 <div class="form-group">
-                                    <label for="cfg-hosts">API Hosts <span class="info-icon" title="IP addresses or hostnames of your Proxmox nodes. ProxLB will try each host in order until one responds.">ℹ️</span></label>
+                                    <label for="cfg-hosts">API Hosts <span class="info-icon" title="IP addresses or hostnames of your Proxmox nodes. Proxmox LB will try each host in order until one responds.">ℹ️</span></label>
                                     <input type="text" id="cfg-hosts" placeholder="10.80.11.11, 10.80.11.12, 10.80.11.13">
                                     <small class="form-hint">Comma-separated list of Proxmox node IPs or hostnames</small>
                                 </div>
@@ -705,7 +705,7 @@
                                     <small class="form-hint">These nodes are excluded from all balancing operations</small>
                                 </div>
                                 <div class="form-group">
-                                    <label>Overprovisioning <span class="info-icon" title="When enabled, ProxLB considers assigned/configured resources rather than actual usage. Useful when VMs don't always use their full allocation.">ℹ️</span></label>
+                                    <label>Overprovisioning <span class="info-icon" title="When enabled, Proxmox LB considers assigned/configured resources rather than actual usage. Useful when VMs don't always use their full allocation.">ℹ️</span></label>
                                     <label class="toggle">
                                         <input type="checkbox" id="cfg-overprovisioning" checked>
                                         <span class="toggle-slider"></span>
@@ -723,7 +723,7 @@
                             <span class="info-icon" title="Configure how VMs are distributed across nodes">ℹ️</span>
                         </div>
                         <div class="card-body">
-                            <p class="section-desc">Control how ProxLB decides when and how to migrate VMs for optimal resource distribution.</p>
+                            <p class="section-desc">Control how Proxmox LB decides when and how to migrate VMs for optimal resource distribution.</p>
                             <form class="settings-form" id="balancing-config-form">
                                 <div class="form-row">
                                     <div class="form-group">
@@ -855,13 +855,13 @@
                     <div class="card">
                         <div class="card-header">
                             <h3>🔄 Service Settings</h3>
-                            <span class="info-icon" title="Configure the ProxLB background service behavior">ℹ️</span>
+                            <span class="info-icon" title="Configure the Proxmox LB background service behavior">ℹ️</span>
                         </div>
                         <div class="card-body">
-                            <p class="section-desc">Control how often ProxLB runs and its logging behavior.</p>
+                            <p class="section-desc">Control how often Proxmox LB runs and its logging behavior.</p>
                             <form class="settings-form" id="service-config-form">
                                 <div class="form-group">
-                                    <label>Daemon Mode <span class="info-icon" title="Run ProxLB as a continuous background service. When enabled, it runs on a schedule. When disabled, it runs once and exits.">ℹ️</span></label>
+                                    <label>Daemon Mode <span class="info-icon" title="Run Proxmox LB as a continuous background service. When enabled, it runs on a schedule. When disabled, it runs once and exits.">ℹ️</span></label>
                                     <label class="toggle">
                                         <input type="checkbox" id="cfg-daemon" checked>
                                         <span class="toggle-slider"></span>
@@ -870,7 +870,7 @@
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="cfg-schedule-interval">Schedule Interval <span class="info-icon" title="How often ProxLB checks cluster balance and performs migrations if needed.">ℹ️</span></label>
+                                        <label for="cfg-schedule-interval">Schedule Interval <span class="info-icon" title="How often Proxmox LB checks cluster balance and performs migrations if needed.">ℹ️</span></label>
                                         <input type="number" id="cfg-schedule-interval" min="1" max="24" value="1">
                                         <small class="form-hint">How often to check balance</small>
                                     </div>

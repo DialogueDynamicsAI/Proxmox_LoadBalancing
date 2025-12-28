@@ -753,11 +753,11 @@ function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
                 <div class="maintenance-option-card proxlb ${inProxLBMaint ? 'active' : ''}">
                     <div class="maintenance-option-header">
                         <span class="maintenance-icon">⚖️</span>
-                        <h4>ProxLB Maintenance</h4>
+                        <h4>Proxmox LB Maintenance</h4>
                         ${inProxLBMaint ? '<span class="status-badge active">ACTIVE</span>' : ''}
                     </div>
                     <p class="maintenance-description">
-                        Excludes node from ProxLB balancing. VMs migrate on next rebalance cycle.
+                        Excludes node from Proxmox LB balancing. VMs migrate on next rebalance cycle.
                     </p>
                     <div class="maintenance-features-compact">
                         <span>✓ API Available</span>
@@ -765,7 +765,7 @@ function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
                     </div>
                     <button class="btn ${inProxLBMaint ? 'btn-success' : 'btn-warning'} btn-full" 
                             onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!inProxLBMaint})">
-                        ${inProxLBMaint ? '✓ Exit ProxLB Maintenance' : '⚖️ Enter ProxLB Maintenance'}
+                        ${inProxLBMaint ? '✓ Exit Proxmox LB Maintenance' : '⚖️ Enter Proxmox LB Maintenance'}
                     </button>
                 </div>
                 
@@ -799,7 +799,7 @@ function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
 
 async function toggleProxLBMaintenance(nodeName, enable) {
     const action = enable ? 'add' : 'remove';
-    const title = enable ? 'Enter ProxLB Maintenance' : 'Exit ProxLB Maintenance';
+    const title = enable ? 'Enter Proxmox LB Maintenance' : 'Exit Proxmox LB Maintenance';
     
     showResultsModal(title, 'loading', `${enable ? 'Entering' : 'Exiting'} ProxLB maintenance mode for ${nodeName}...`);
     
@@ -809,7 +809,7 @@ async function toggleProxLBMaintenance(nodeName, enable) {
         if (result.success) {
             const content = `
                 <div class="maintenance-result">
-                    <div class="maintenance-type-badge proxlb">⚖️ ProxLB Maintenance</div>
+                    <div class="maintenance-type-badge proxlb">⚖️ Proxmox LB Maintenance</div>
                     <div class="log-line">Node: <strong>${nodeName}</strong></div>
                     <div class="log-line">Action: ${enable ? 'Added to' : 'Removed from'} ProxLB maintenance</div>
                     <div class="log-line">Current ProxLB maintenance nodes: ${(result.maintenance_nodes || []).join(', ') || 'None'}</div>
