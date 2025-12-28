@@ -2774,3 +2774,47 @@ tr.running td {
 .maintenance-options-compact .maintenance-option-card {
     padding: 1rem;
 }
+
+/* Proxmox HA Instructions */
+.proxmox-ha-instructions {
+    background: var(--bg-primary);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.proxmox-ha-instructions p {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.proxmox-ha-instructions ol {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.proxmox-ha-instructions li {
+    margin-bottom: 0.25rem;
+}
+
+/* Shell command styling */
+.shell-command {
+    display: block;
+    background: #1a1a2e;
+    color: #00ff88;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #333;
+    margin: 0.25rem 0;
+    word-break: break-all;
+    user-select: all;
+}
+
+.mt-half {
+    margin-top: 0.5rem;
+}

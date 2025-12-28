@@ -721,14 +721,13 @@ async function toggleMaintenance(nodeName, enable) {
 }
 
 function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
-    // Show loading state while fetching HA status
+    // Show loading state while fetching status
     showResultsModal('Maintenance Mode', 'loading', `Loading status for node: ${nodeName}`, '');
     
-    // Fetch the actual maintenance status for both types
+    // Fetch the actual maintenance status
     apiGet('/nodes/maintenance-status').then(data => {
         const nodeStatus = data.nodes?.find(n => n.node === nodeName) || {};
         const inProxLBMaint = nodeStatus.proxlb_maintenance || false;
-        const inHAMaint = nodeStatus.proxmox_ha_maintenance || false;
         
         const content = `
             <div class="maintenance-options-compact">
@@ -739,54 +738,15 @@ function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
                         ${inProxLBMaint ? '<span class="status-badge active">ACTIVE</span>' : ''}
                     </div>
                     <p class="maintenance-description">
-                        Excludes node from ProxLB balancing. VMs migrate on next rebalance.
+                        Excludes node from ProxLB balancing. VMs migrate on next rebalance cycle.
                     </p>
                     <div class="maintenance-features-compact">
-                        <span>✓ Balancing only</span>
-                        <span>✓ Node operational</span>
+                        <span>✓ API Available</span>
+                        <span>✓ Load Balancing</span>
                     </div>
                     <button class="btn ${inProxLBMaint ? 'btn-success' : 'btn-warning'} btn-full" 
                             onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!inProxLBMaint})">
                         ${inProxLBMaint ? '✓ Exit ProxLB Maintenance' : '⚖️ Enter ProxLB Maintenance'}
-                    </button>
-                </div>
-                
-                <div class="maintenance-option-card proxmox ${inHAMaint ? 'active' : ''}">
-                    <div class="maintenance-option-header">
-                        <span class="maintenance-icon">🔒</span>
-                        <h4>Proxmox HA</h4>
-                        ${inHAMaint ? '<span class="status-badge active">ACTIVE</span>' : ''}
-                    </div>
-                    <p class="maintenance-description">
-                        Real Proxmox HA maintenance. HA VMs migrate immediately.
-                    </p>
-                    <div class="maintenance-features-compact">
-                        <span>✓ Cluster-level</span>
-                        <span>⚠️ Requires HA</span>
-                    </div>
-                    <button class="btn ${inHAMaint ? 'btn-success' : 'btn-danger'} btn-full" 
-                            onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', ${!inHAMaint})">
-                        ${inHAMaint ? '✓ Exit Proxmox HA Maintenance' : '🔒 Enter Proxmox HA Maintenance'}
-                    </button>
-                </div>
-            </div>
-        `;
-        updateResultsModal('info', `Node: ${nodeName}`, content);
-    }).catch(error => {
-        // Fallback if we can't fetch status
-        const content = `
-            <div class="maintenance-options-compact">
-                <div class="maintenance-option-card proxlb">
-                    <div class="maintenance-option-header">
-                        <span class="maintenance-icon">⚖️</span>
-                        <h4>ProxLB Maintenance</h4>
-                    </div>
-                    <p class="maintenance-description">
-                        Excludes node from ProxLB balancing. VMs migrate on next rebalance.
-                    </p>
-                    <button class="btn ${currentlyInProxLBMaintenance ? 'btn-success' : 'btn-warning'} btn-full" 
-                            onclick="closeResultsModal(); toggleProxLBMaintenance('${nodeName}', ${!currentlyInProxLBMaintenance})">
-                        ${currentlyInProxLBMaintenance ? '✓ Exit ProxLB Maintenance' : '⚖️ Enter ProxLB Maintenance'}
                     </button>
                 </div>
                 
@@ -796,20 +756,25 @@ function showMaintenanceModal(nodeName, currentlyInProxLBMaintenance) {
                         <h4>Proxmox HA</h4>
                     </div>
                     <p class="maintenance-description">
-                        Real Proxmox HA maintenance. HA VMs migrate immediately.
+                        Real Proxmox HA maintenance. Requires Proxmox GUI (API not available in PVE 9.1).
                     </p>
-                    <div class="maintenance-btn-group">
-                        <button class="btn btn-danger" onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', true)">
-                            🔒 Enter
-                        </button>
-                        <button class="btn btn-success" onclick="closeResultsModal(); toggleProxmoxHAMaintenance('${nodeName}', false)">
-                            ✓ Exit
-                        </button>
+                    <div class="maintenance-features-compact">
+                        <span>⚠️ No API</span>
+                        <span>✓ HA VMs Only</span>
+                    </div>
+                    <div class="proxmox-ha-instructions">
+                        <p><strong>Run on any Proxmox node shell:</strong></p>
+                        <code class="shell-command">ha-manager crm-command node-maintenance enable ${nodeName}</code>
+                        <p class="mt-half"><strong>To disable:</strong></p>
+                        <code class="shell-command">ha-manager crm-command node-maintenance disable ${nodeName}</code>
                     </div>
                 </div>
             </div>
         `;
         updateResultsModal('info', `Node: ${nodeName}`, content);
+    }).catch(error => {
+        // Fallback if we can't fetch status
+        updateResultsModal('error', 'Failed to load maintenance status', `<pre>${error.message}</pre>`);
     });
 }
 
