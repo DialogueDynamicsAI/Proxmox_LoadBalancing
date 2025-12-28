@@ -141,14 +141,20 @@ async def get_status():
         status = proxlb_service.get_status() if proxlb_service else {"running": False}
         config = load_config()
         
+        # Check if balancing is enabled in config
+        balancing_enabled = True  # Default to enabled
+        if config and "balancing" in config:
+            balancing_enabled = config["balancing"].get("enable", True)
+        
         return {
             "proxlb": status,
             "config_loaded": config is not None,
+            "balancing_enabled": balancing_enabled,
             "version": "1.1.10",
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        return {"error": str(e), "running": False}
+        return {"error": str(e), "running": False, "balancing_enabled": True}
 
 
 @app.get("/api/cluster")

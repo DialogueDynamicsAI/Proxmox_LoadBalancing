@@ -335,6 +335,7 @@ async function loadServiceStatus() {
         
         const isRunning = data.proxlb?.running || false;
         const isDaemonMode = config.config?.service?.daemon !== false;
+        const isBalancingEnabled = data.balancing_enabled !== false; // Check if balancing is enabled
         
         updateServiceStatusDisplay(isRunning);
         
@@ -352,7 +353,17 @@ async function loadServiceStatus() {
         const timerLabelEl = document.getElementById('next-run-label');
         
         if (timerContainer && timerEl && timerLabelEl) {
-            if (isDaemonMode && isRunning) {
+            // Check if balancing is disabled first
+            if (!isBalancingEnabled) {
+                // Balancing is disabled - show "Disabled"
+                timerLabelEl.textContent = 'Auto-Balance';
+                timerEl.textContent = 'Disabled';
+                timerContainer.classList.add('manual-mode');
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
+            } else if (isDaemonMode && isRunning) {
                 // Automatic mode - show countdown
                 timerLabelEl.textContent = 'Next Rebalance';
                 
