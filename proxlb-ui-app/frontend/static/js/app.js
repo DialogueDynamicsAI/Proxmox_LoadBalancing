@@ -389,24 +389,15 @@ function refreshNodes() {
 
 async function toggleMaintenance(nodeName, enable) {
     const action = enable ? 'add' : 'remove';
-    const message = enable 
-        ? `Put "${nodeName}" in maintenance mode? All VMs will be migrated to other nodes.`
-        : `Remove "${nodeName}" from maintenance mode?`;
-    
-    showConfirmModal(
-        enable ? 'Enter Maintenance Mode' : 'Exit Maintenance Mode',
-        message,
-        async () => {
-            try {
-                await apiPost('/maintenance', { node: nodeName, action });
-                showToast(`Node ${nodeName} ${enable ? 'entered' : 'exited'} maintenance mode`, 'success');
-                loadNodes();
-                loadDashboard();
-            } catch (error) {
-                showToast('Failed to update maintenance mode', 'error');
-            }
-        }
-    );
+    try {
+        showToast(`${enable ? 'Entering' : 'Exiting'} maintenance mode...`, 'info');
+        await apiPost('/maintenance', { node: nodeName, action });
+        showToast(`Node ${nodeName} ${enable ? 'entered' : 'exited'} maintenance mode`, 'success');
+        loadNodes();
+        loadDashboard();
+    } catch (error) {
+        showToast('Failed to update maintenance mode', 'error');
+    }
 }
 
 // ============== Guests Page ==============
@@ -543,20 +534,14 @@ async function saveBalancingSettings() {
 }
 
 async function triggerRebalance() {
-    showConfirmModal(
-        'Trigger Rebalance',
-        'This will immediately rebalance VMs across the cluster. Continue?',
-        async () => {
-            try {
-                showToast('Rebalancing started...', 'info');
-                const result = await apiPost('/balancing/trigger');
-                showToast('Rebalance completed', 'success');
-                loadDashboard();
-            } catch (error) {
-                showToast('Rebalance failed', 'error');
-            }
-        }
-    );
+    try {
+        showToast('Rebalancing started...', 'info');
+        const result = await apiPost('/balancing/trigger');
+        showToast('Rebalance completed', 'success');
+        loadDashboard();
+    } catch (error) {
+        showToast('Rebalance failed', 'error');
+    }
 }
 
 async function triggerDryRun() {
@@ -596,19 +581,13 @@ async function startService() {
 }
 
 async function stopService() {
-    showConfirmModal(
-        'Stop ProxLB',
-        'Stop the ProxLB service? Automatic balancing will be disabled.',
-        async () => {
-            try {
-                await apiPost('/service/stop');
-                showToast('ProxLB service stopped', 'success');
-                updateServiceStatusDisplay(false);
-            } catch (error) {
-                showToast('Failed to stop service', 'error');
-            }
-        }
-    );
+    try {
+        await apiPost('/service/stop');
+        showToast('ProxLB service stopped', 'success');
+        updateServiceStatusDisplay(false);
+    } catch (error) {
+        showToast('Failed to stop service', 'error');
+    }
 }
 
 async function restartService() {
@@ -938,23 +917,18 @@ function buildConfigFromForm() {
 }
 
 async function saveConfig() {
-    showConfirmModal(
-        'Save Configuration',
-        'Save configuration and restart ProxLB service?',
-        async () => {
-            try {
-                const config = buildConfigFromForm();
-                
-                await apiPost('/config', { config });
-                await apiPost('/service/restart');
-                
-                showToast('Configuration saved and service restarted', 'success');
-                currentConfig = config;  // Update cached config
-            } catch (error) {
-                showToast('Failed to save configuration: ' + error.message, 'error');
-            }
-        }
-    );
+    try {
+        showToast('Saving configuration...', 'info');
+        const config = buildConfigFromForm();
+        
+        await apiPost('/config', { config });
+        await apiPost('/service/restart');
+        
+        showToast('Configuration saved and service restarted', 'success');
+        currentConfig = config;  // Update cached config
+    } catch (error) {
+        showToast('Failed to save configuration: ' + error.message, 'error');
+    }
 }
 
 // Simple YAML-like parser (basic implementation)
