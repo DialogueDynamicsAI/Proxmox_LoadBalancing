@@ -3,7 +3,7 @@ ProxLB Web Interface - Main Application
 A standalone web interface for ProxLB load balancer
 """
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -24,6 +24,12 @@ from services.proxmox_api import ProxmoxAPI
 from services.proxlb_service import ProxLBService
 from services.log_parser import LogParser
 
+# Import auth modules
+from database import get_db, init_db, SessionLocal
+from auth.routes import router as auth_router, users_router
+from auth.dependencies import require_auth, require_role, get_current_user
+from auth.models import User, UserRole
+
 # Configuration
 CONFIG_PATH = os.getenv("PROXLB_CONFIG", "/etc/proxlb/proxlb.yaml")
 DOCKER_CONTAINER_NAME = os.getenv("PROXLB_CONTAINER", "proxlb")
@@ -38,6 +44,16 @@ log_parser: Optional[LogParser] = None
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     global proxmox_api, proxlb_service, log_parser
+    
+    # Initialize database
+    try:
+        init_db()
+        print("✓ Database initialized")
+        
+        # Create default admin user if none exists
+        create_default_admin()
+    except Exception as e:
+        print(f"⚠ Warning: Database initialization error: {e}")
     
     # Initialize services
     try:
@@ -57,9 +73,45 @@ async def lifespan(app: FastAPI):
         proxmox_api.close()
 
 
+def create_default_admin():
+    """Create default admin user if none exists"""
+    import secrets
+    
+    db = SessionLocal()
+    try:
+        # Check if any admin exists
+        admin = db.query(User).filter(User.role == "admin").first()
+        if not admin:
+            # Generate or get password from environment
+            default_password = os.getenv("ADMIN_PASSWORD", secrets.token_urlsafe(12))
+            
+            admin = User(
+                username="admin",
+                hashed_password=User.hash_password(default_password),
+                full_name="Administrator",
+                role="admin",
+                is_active=True
+            )
+            db.add(admin)
+            db.commit()
+            
+            print("=" * 60)
+            print("  DEFAULT ADMIN USER CREATED")
+            print("=" * 60)
+            print(f"  Username: admin")
+            print(f"  Password: {default_password}")
+            print("=" * 60)
+            print("  Please change this password after first login!")
+            print("=" * 60)
+        else:
+            print("✓ Admin user exists")
+    finally:
+        db.close()
+
+
 app = FastAPI(
-    title="ProxLB Web Interface",
-    description="A standalone web interface for ProxLB - Proxmox Load Balancer",
+    title="Proxmox LoadBalancer",
+    description="Proxmox LoadBalancer - Powered by Dialogue Dynamics",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -81,6 +133,10 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+# Include auth routers
+app.include_router(auth_router)
+app.include_router(users_router)
 
 
 def load_config() -> Optional[Dict]:
@@ -126,9 +182,15 @@ class BalancingSettings(BaseModel):
 
 # ============== Web Routes ==============
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Login page"""
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """Main dashboard page"""
+    """Main dashboard page - requires authentication via frontend check"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 
@@ -256,7 +318,7 @@ async def update_config(config_update: ConfigUpdate):
 
 
 @app.post("/api/maintenance")
-async def update_maintenance(data: MaintenanceNode):
+async def update_maintenance(data: MaintenanceNode, user: User = Depends(require_role(["admin", "tech"]))):
     """Add or remove a node from maintenance mode"""
     config = load_config()
     if not config:
@@ -284,7 +346,7 @@ async def update_maintenance(data: MaintenanceNode):
 
 
 @app.post("/api/balancing/settings")
-async def update_balancing_settings(settings: BalancingSettings):
+async def update_balancing_settings(settings: BalancingSettings, user: User = Depends(require_role(["admin"]))):
     """Update balancing settings"""
     config = load_config()
     if not config:
@@ -455,7 +517,7 @@ async def get_rules():
 
 
 @app.post("/api/service/restart")
-async def restart_service():
+async def restart_service(user: User = Depends(require_role(["admin"]))):
     """Restart ProxLB service"""
     if not proxlb_service:
         raise HTTPException(status_code=503, detail="ProxLB service not available")
@@ -468,7 +530,7 @@ async def restart_service():
 
 
 @app.post("/api/service/stop")
-async def stop_service():
+async def stop_service(user: User = Depends(require_role(["admin"]))):
     """Stop ProxLB service"""
     if not proxlb_service:
         raise HTTPException(status_code=503, detail="ProxLB service not available")
@@ -481,7 +543,7 @@ async def stop_service():
 
 
 @app.post("/api/service/start")
-async def start_service():
+async def start_service(user: User = Depends(require_role(["admin"]))):
     """Start ProxLB service"""
     if not proxlb_service:
         raise HTTPException(status_code=503, detail="ProxLB service not available")

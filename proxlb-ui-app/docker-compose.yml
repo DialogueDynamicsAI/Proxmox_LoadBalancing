@@ -1,4 +1,5 @@
-# ProxLB Web Interface - Docker Compose Configuration
+# Proxmox LoadBalancer - Docker Compose Configuration
+# Powered by Dialogue Dynamics
 
 version: '3.8'
 
@@ -17,9 +18,16 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared temp directory for one-shot ProxLB runs
       - /tmp:/tmp
+      # Data directory for SQLite database
+      - proxlb-data:/data
     environment:
       - PROXLB_CONFIG=/etc/proxlb/proxlb.yaml
       - PROXLB_CONTAINER=proxlb
+      - DATABASE_DIR=/data
+      # Set a default admin password (change in production)
+      # - ADMIN_PASSWORD=your-secure-password
+      # JWT secret key (auto-generated if not set)
+      - JWT_SECRET_KEY=L0cp+zAoUuti43/mPTctikLk54BBHt5LW5hWF2jdLys=
     depends_on:
       - proxlb
     networks:
@@ -38,3 +46,6 @@ networks:
   proxlb-net:
     driver: bridge
 
+volumes:
+  proxlb-data:
+    driver: local

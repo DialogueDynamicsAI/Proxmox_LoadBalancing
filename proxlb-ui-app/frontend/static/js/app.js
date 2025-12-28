@@ -76,6 +76,9 @@ function navigateTo(page) {
         case 'config':
             loadConfig();
             break;
+        case 'users':
+            loadUsers();
+            break;
     }
 }
 
@@ -2227,3 +2230,234 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+
+// ============ User Management Functions ============
+
+async function loadUsers() {
+    const container = document.getElementById('users-list');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading">Loading users...</div>';
+    
+    try {
+        const data = await apiGet('/users');
+        
+        if (!data.users || data.users.length === 0) {
+            container.innerHTML = '<div class="empty-state">No users found</div>';
+            return;
+        }
+        
+        let html = '';
+        for (const user of data.users) {
+            const roleClass = user.role === 'admin' ? 'admin' : (user.role === 'tech' ? 'tech' : 'level1');
+            const statusClass = user.is_active ? 'active' : 'inactive';
+            
+            html += `
+                <div class="user-card ${statusClass}">
+                    <div class="user-card-header">
+                        <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                        <div class="user-info-card">
+                            <h3>${user.full_name || user.username}</h3>
+                            <span class="user-username">@${user.username}</span>
+                        </div>
+                        <span class="role-badge ${roleClass}">${user.role}</span>
+                    </div>
+                    <div class="user-card-body">
+                        <div class="user-detail">
+                            <span class="label">Email:</span>
+                            <span class="value">${user.email || 'Not set'}</span>
+                        </div>
+                        <div class="user-detail">
+                            <span class="label">Status:</span>
+                            <span class="value status-${statusClass}">${user.is_active ? 'Active' : 'Disabled'}</span>
+                        </div>
+                        <div class="user-detail">
+                            <span class="label">Last Login:</span>
+                            <span class="value">${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</span>
+                        </div>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="showEditUserModal(${user.id})">Edit</button>
+                        ${user.id !== getCurrentUser()?.id ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.username}')">Delete</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Failed to load users:', error);
+        container.innerHTML = `<div class="error-state">Failed to load users: ${error.message}</div>`;
+    }
+}
+
+function showCreateUserModal() {
+    const content = `
+        <form id="create-user-form" onsubmit="createUser(event)">
+            <div class="form-group">
+                <label class="form-label">Username *</label>
+                <input type="text" class="form-input" name="username" required pattern="[a-zA-Z0-9_]+" title="Only letters, numbers, and underscores">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-input" name="password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" name="full_name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" name="email">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Role *</label>
+                <select class="form-input" name="role" required>
+                    <option value="level1">Level 1 Tech (Read Only)</option>
+                    <option value="tech">Tech (Can Balance)</option>
+                    <option value="admin">Admin (Full Access)</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    `;
+    
+    showResultsModal('Create New User', 'info', '', content);
+}
+
+async function createUser(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const userData = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        full_name: formData.get('full_name') || null,
+        email: formData.get('email') || null,
+        role: formData.get('role')
+    };
+    
+    try {
+        await apiPost('/users', userData);
+        closeResultsModal();
+        showToast('User created successfully', 'success');
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to create user: ${error.message}`, 'error');
+    }
+}
+
+async function showEditUserModal(userId) {
+    try {
+        const user = await apiGet(`/users/${userId}`);
+        
+        const content = `
+            <form id="edit-user-form" onsubmit="updateUser(event, ${userId})">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" value="${user.username}" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" class="form-input" name="password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-input" name="full_name" value="${user.full_name || ''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" name="email" value="${user.email || ''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select class="form-input" name="role">
+                        <option value="level1" ${user.role === 'level1' ? 'selected' : ''}>Level 1 Tech (Read Only)</option>
+                        <option value="tech" ${user.role === 'tech' ? 'selected' : ''}>Tech (Can Balance)</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin (Full Access)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-input" name="is_active">
+                        <option value="true" ${user.is_active ? 'selected' : ''}>Active</option>
+                        <option value="false" ${!user.is_active ? 'selected' : ''}>Disabled</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeResultsModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        `;
+        
+        showResultsModal(`Edit User: ${user.username}`, 'info', '', content);
+    } catch (error) {
+        showToast(`Failed to load user: ${error.message}`, 'error');
+    }
+}
+
+async function updateUser(event, userId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const userData = {
+        full_name: formData.get('full_name') || null,
+        email: formData.get('email') || null,
+        role: formData.get('role'),
+        is_active: formData.get('is_active') === 'true'
+    };
+    
+    // Only include password if provided
+    const password = formData.get('password');
+    if (password) {
+        userData.password = password;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(userData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Update failed');
+        }
+        
+        closeResultsModal();
+        showToast('User updated successfully', 'success');
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to update user: ${error.message}`, 'error');
+    }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Delete failed');
+        }
+        
+        showToast('User deleted successfully', 'success');
+        loadUsers();
+    } catch (error) {
+        showToast(`Failed to delete user: ${error.message}`, 'error');
+    }
+}

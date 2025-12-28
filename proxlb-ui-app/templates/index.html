@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proxmox LoadBalancer | Dialogue Dynamics AI</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=14">
+    <link rel="stylesheet" href="/static/css/style.css?v=16">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -63,7 +63,7 @@
                     <span class="nav-icon">💻</span>
                     <span class="nav-label">Guests</span>
                 </a>
-                <a href="#" class="nav-item" data-page="balancing">
+                <a href="#" class="nav-item" data-page="balancing" data-role-action="tech">
                     <span class="nav-icon">⚡</span>
                     <span class="nav-label">Balancing</span>
                 </a>
@@ -75,9 +75,13 @@
                     <span class="nav-icon">📝</span>
                     <span class="nav-label">Logs</span>
                 </a>
-                <a href="#" class="nav-item" data-page="config">
+                <a href="#" class="nav-item" data-page="config" data-role="admin">
                     <span class="nav-icon">⚙️</span>
                     <span class="nav-label">Config</span>
+                </a>
+                <a href="#" class="nav-item" data-page="users" data-role="admin">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">Users</span>
                 </a>
             </nav>
             
@@ -878,6 +882,21 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Users Section (Admin Only) -->
+            <section class="page" id="page-users">
+                <div class="section-header">
+                    <h1>User <em>Management</em></h1>
+                    <button class="btn btn-primary" onclick="showCreateUserModal()">
+                        <span class="btn-icon">➕</span>
+                        Add User
+                    </button>
+                </div>
+                
+                <div class="users-grid" id="users-list">
+                    <!-- Users will be loaded here -->
+                </div>
+            </section>
         </main>
     </div>
 
@@ -918,7 +937,8 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js?v=14"></script>
+    <script src="/static/js/auth.js?v=16"></script>
+    <script src="/static/js/app.js?v=17"></script>
 </body>
 </html>
 

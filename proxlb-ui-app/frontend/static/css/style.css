@@ -2818,3 +2818,208 @@ tr.running td {
 .mt-half {
     margin-top: 0.5rem;
 }
+
+/* ============ User Section & Logout ============ */
+.user-section {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    margin-bottom: 0.5rem;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: var(--accent-info);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(6, 182, 212, 0.1);
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-danger);
+}
+
+.logout-btn .nav-icon {
+    font-size: 1.1rem;
+}
+
+/* Hide elements based on role */
+[data-role="admin"] {
+    /* Will be controlled by JS */
+}
+
+[data-role="tech"] {
+    /* Will be controlled by JS */
+}
+
+/* ============ User Cards ============ */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.user-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.user-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.user-card.inactive {
+    opacity: 0.7;
+}
+
+.user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: white;
+}
+
+.user-info-card {
+    flex: 1;
+}
+
+.user-info-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.user-username {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.role-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-badge.admin {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.role-badge.tech {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.role-badge.level1 {
+    background: rgba(6, 182, 212, 0.2);
+    color: #06b6d4;
+}
+
+.user-card-body {
+    padding: 1rem 1.25rem;
+}
+
+.user-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-detail:last-child {
+    border-bottom: none;
+}
+
+.user-detail .label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.user-detail .value {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.status-active {
+    color: var(--accent-success) !important;
+}
+
+.status-inactive {
+    color: var(--accent-danger) !important;
+}
+
+.user-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
